@@ -10,10 +10,14 @@ if not firebase_admin._apps:
     sa_key_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY')
     if sa_key_json:
         cred = credentials.Certificate(json.loads(sa_key_json))
+        firebase_admin.initialize_app(cred)
     else:
         _cred_path = os.path.join(settings.BASE_DIR, 'serviceAccountKey.json')
-        cred = credentials.Certificate(_cred_path)
-    firebase_admin.initialize_app(cred)
+        if os.path.exists(_cred_path):
+            cred = credentials.Certificate(_cred_path)
+            firebase_admin.initialize_app(cred)
+        else:
+            firebase_admin.initialize_app()
 
 db = admin_firestore.client()
 DESCENDING = Query.DESCENDING

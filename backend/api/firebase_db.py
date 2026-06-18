@@ -7,9 +7,12 @@ from google.cloud.firestore_v1 import Query
 from django.conf import settings
 
 if not firebase_admin._apps:
-    sa_key_json = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY')
-    if sa_key_json:
-        cred = credentials.Certificate(json.loads(sa_key_json))
+    sa_key_raw = os.environ.get('FIREBASE_SERVICE_ACCOUNT_KEY')
+    if sa_key_raw:
+        try:
+            cred = credentials.Certificate(json.loads(sa_key_raw))
+        except json.JSONDecodeError:
+            cred = credentials.Certificate(json.loads(__import__('base64').b64decode(sa_key_raw).decode()))
         firebase_admin.initialize_app(cred)
     else:
         _cred_path = os.path.join(settings.BASE_DIR, 'serviceAccountKey.json')

@@ -1,0 +1,9 @@
+node_modules/
+.next/
+out/
+.env
+*.sql
+__pycache__/
+*.pyc
+db.sqlite3
+serviceAccountKey.json

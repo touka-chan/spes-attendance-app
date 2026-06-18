@@ -1,0 +1,40 @@
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL,GRAD,opsz@100..700,0..1,-50..200,20..48&display=swap');
+
+:root {
+  --primary: #0052cc;
+  --primary-hover: #0040a2;
+  --on-primary: #ffffff;
+  --background: #f0f3ff;
+  --surface: #ffffff;
+  --on-surface: #091c35;
+  --secondary: #565f6a;
+  --outline: #737685;
+  --outline-variant: #c3c6d6;
+  --error: #ba1a1a;
+  --success: #00875a;
+  
+  --font-family: 'Inter', sans-serif;
+}
+
+body {
+  background-color: var(--background);
+  font-family: var(--font-family);
+  margin: 0;
+  color: var(--on-surface);
+  min-height: 100vh;
+}
+
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Base resets */
+* {
+  box-sizing: border-box;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.2);
+}

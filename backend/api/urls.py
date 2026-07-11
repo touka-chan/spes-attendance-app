@@ -5,6 +5,7 @@ urlpatterns = [
     path('login/', views.login_view, name='login'),
     path('login/requirements/', views.check_security_requirements, name='check-security-requirements'),
     path('login/verify-captcha/', views.verify_captcha, name='verify-captcha'),
+    path('login/verify-challenge/', views.verify_challenge, name='verify-challenge'),
     path('login/setup-2fa/', views.setup_2fa, name='setup-2fa'),
     path('login/verify-2fa/', views.verify_2fa_setup, name='verify-2fa'),
     path('login/disable-2fa/', views.disable_2fa, name='disable-2fa'),

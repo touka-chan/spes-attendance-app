@@ -4,7 +4,6 @@ import styles from './login.module.css';
 import Image from 'next/image';
 import { authenticateUser, checkLoginRequirements } from './lib/users';
 import { forgotPassword } from './lib/api';
-import { CaptchaChallenge, TwoFAChallenge } from './lib/SecurityChallenge';
 
 export default function Login() {
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -15,19 +14,12 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSending, setForgotSending] = useState(false);
-  const [captchaRequired, setCaptchaRequired] = useState(false);
-  const [twoFARequired, setTwoFARequired] = useState(false);
-  const [captchaToken, setCaptchaToken] = useState('');
-  const [totpCode, setTotpCode] = useState('');
-  const [siteKey, setSiteKey] = useState('');
-  const [locked, setLocked] = useState(false);
-  const [lockoutMinutes, setLockoutMinutes] = useState(0);
   const [checkingRequirements, setCheckingRequirements] = useState(true);
 
   const emailRef = useRef();
   const passwordRef = useRef();
 
-  // Check security requirements on page load
+  // Check security requirements on page load and email change
   useEffect(() => {
     checkRequirements();
   }, []);
@@ -41,13 +33,38 @@ export default function Login() {
 
     try {
       const reqs = await checkLoginRequirements(email);
-      setCaptchaRequired(reqs.requireCaptcha);
-      setTwoFARequired(reqs.require2fa);
-      setSiteKey(reqs.siteKey || '');
-      setLocked(reqs.locked || false);
-      setLockoutMinutes(reqs.lockoutMinutes || 0);
+      if (reqs.locked) {
+        // Redirect to challenge page with lockout info
+        const params = new URLSearchParams({
+          type: 'locked',
+          email: email,
+          minutes: reqs.lockout_minutes,
+          redirect: '/'
+        });
+        window.location.href = `/challenge?${params.toString()}`;
+        return;
+      }
+      if (reqs.require_captcha) {
+        const params = new URLSearchParams({
+          type: 'captcha',
+          email: email,
+          site_key: reqs.site_key,
+          redirect: '/'
+        });
+        window.location.href = `/challenge?${params.toString()}`;
+        return;
+      }
+      if (reqs.require_2fa) {
+        const params = new URLSearchParams({
+          type: '2fa',
+          email: email,
+          redirect: '/'
+        });
+        window.location.href = `/challenge?${params.toString()}`;
+        return;
+      }
     } catch (err) {
-      console.error('Failed to check login requirements:', err);
+      console.error('Failed to check requirements:', err);
     } finally {
       setCheckingRequirements(false);
     }
@@ -60,40 +77,51 @@ export default function Login() {
     const email = emailRef.current.value;
     const password = passwordRef.current.value;
 
+    if (!email || !password) {
+      setError('Please enter both email and password');
+      setLoading(false);
+      return;
+    }
+
     try {
-      const result = await authenticateUser(email, password, captchaToken || null, totpCode || null);
+      const result = await authenticateUser(email, password);
 
       if (result.error) {
         const data = result.error;
-        
-        // Handle lockout
+
         if (data.locked) {
-          setLocked(true);
-          setLockoutMinutes(data.lockoutMinutes || 0);
-          setCaptchaRequired(data.requireCaptcha || false);
-          setError(data.message || 'Account locked');
-          setLoading(false);
+          const params = new URLSearchParams({
+            type: 'locked',
+            email: email,
+            minutes: data.lockoutMinutes,
+            redirect: '/'
+          });
+          window.location.href = `/challenge?${params.toString()}`;
           return;
         }
 
-        // Handle CAPTCHA requirement
         if (data.requireCaptcha) {
-          setCaptchaRequired(true);
-          setSiteKey(data.siteKey || '');
-          setError(data.message || 'CAPTCHA required');
-          setLoading(false);
+          const params = new URLSearchParams({
+            type: 'captcha',
+            email: email,
+            site_key: data.siteKey,
+            redirect: '/'
+          });
+          window.location.href = `/challenge?${params.toString()}`;
           return;
         }
 
-        // Handle 2FA requirement
         if (data.require2fa) {
-          setTwoFARequired(true);
-          setError(data.message || '2FA required');
-          setLoading(false);
+          const params = new URLSearchParams({
+            type: '2fa',
+            email: email,
+            redirect: '/'
+          });
+          window.location.href = `/challenge?${params.toString()}`;
           return;
         }
 
-        setError(data.message || 'Invalid credentials');
+        setError(data.message || 'Invalid email or password');
         setLoading(false);
         return;
       }
@@ -118,30 +146,6 @@ export default function Login() {
     }
   };
 
-  const handleCaptchaSuccess = (token) => {
-    setCaptchaToken(token);
-    setCaptchaRequired(false);
-    setError('');
-    // Auto-submit after CAPTCHA success
-    setTimeout(handleLogin, 100);
-  };
-
-  const handleCaptchaError = (err) => {
-    setError(err);
-    setCaptchaToken('');
-  };
-
-  const handle2FASuccess = () => {
-    setTwoFARequired(false);
-    setError('');
-    handleLogin();
-  };
-
-  const handle2FAError = (err) => {
-    setError(err);
-    setTotpCode('');
-  };
-
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') handleLogin();
   };
@@ -158,9 +162,6 @@ export default function Login() {
     }
     setForgotSending(false);
   };
-
-  // Disable login button if checking requirements
-  const disableLogin = loading || checkingRequirements || (captchaRequired && !captchaToken) || (twoFARequired && !totpCode);
 
   return (
     <div className={styles.splitLayout}>
@@ -179,19 +180,12 @@ export default function Login() {
           </div>
 
           <div className={styles.form}>
-            {locked && (
-              <div className={styles.error} style={{ background: '#fff3cd', color: '#856404', border: '1px solid #ffc107' }}>
-                <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', marginRight: '8px' }}>lock</span>
-                Account locked due to multiple failed attempts. Try again in {lockoutMinutes} minute{lockoutMinutes !== 1 ? 's' : ''}.
-              </div>
-            )}
-
-            {error && !locked && <div className={styles.error}>{error}</div>}
+            {error && <div className={styles.error}>{error}</div>}
 
             <div className={styles.inputGroup}>
               <div className={styles.inputWrapper}>
                 <span className="material-symbols-outlined">mail</span>
-                <input type="email" ref={emailRef} placeholder="Email Address" onKeyDown={handleKeyDown} onBlur={checkRequirements} />
+                <input type="email" ref={emailRef} placeholder="Email Address" onKeyDown={handleKeyDown} onBlur={() => { if (!checkingRequirements) checkRequirements(); }} />
               </div>
             </div>
 
@@ -215,28 +209,8 @@ export default function Login() {
                 </button>
               </div>
             </div>
-
-            {/* CAPTCHA Challenge */}
-            {captchaRequired && siteKey && (
-              <CaptchaChallenge
-                email={emailRef.current?.value}
-                siteKey={siteKey}
-                onSuccess={(token) => handleCaptchaSuccess(token)}
-                onError={(err) => handleCaptchaError(err)}
-              />
-            )}
-
-            {/* 2FA Challenge */}
-            {twoFARequired && (
-              <TwoFAChallenge
-                email={emailRef.current?.value}
-                onSuccess={handle2FASuccess}
-                onError={handle2FAError}
-              />
-            )}
-
             <a href="#" className={styles.forgotPassword} onClick={e => { e.preventDefault(); setShowForgot(true); setForgotEmail(''); setForgotMsg(''); setForgotError(''); }}>Forgot Password?</a>
-            <button type="button" className={styles.submitBtn} onClick={handleLogin} disabled={disableLogin}>
+            <button type="button" className={styles.submitBtn} onClick={handleLogin} disabled={loading || checkingRequirements}>
               {loading ? 'LOGGING IN...' : 'LOGIN'}
             </button>
           </div>

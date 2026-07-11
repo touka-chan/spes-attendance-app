@@ -14,7 +14,6 @@ export async function authenticateUser(email, password, captchaToken = null, tot
   const data = await res.json();
 
   if (!res.ok) {
-    // Return the error data so the caller can handle specific cases
     return { error: data };
   }
 
@@ -33,16 +32,15 @@ export async function authenticateUser(email, password, captchaToken = null, tot
   };
 }
 
-// Check if CAPTCHA/2FA is required for an email (call on page load)
 export async function checkLoginRequirements(email) {
-  const res = await fetch(`${API_URL}/login/requirements/`, {
+  const res = await fetch(`${API_URL}/check-security/`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
     body: JSON.stringify({ email }),
   });
 
   if (!res.ok) {
-    return { requireCaptcha: false, require2fa: false, siteKey: '' };
+    return { require_captcha: false, require_2fa: false, locked: false };
   }
 
   return res.json();

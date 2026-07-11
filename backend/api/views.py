@@ -123,8 +123,8 @@ def _time_str(t):
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
-    captcha_token = request.data.get('captcha_token')  # hCaptcha/turnstile token
-    totp_code = request.data.get('totp_code')  # TOTP code for 2FA
+    captcha_token = request.data.get('captcha_token')
+    totp_code = request.data.get('totp_code')
 
     user = authenticate(email=email, password=password)
 
@@ -143,18 +143,18 @@ def login_view(request):
             from django.utils import timezone
             lockout_minutes = int((user_obj.lockout_until - timezone.now()).total_seconds() / 60)
             return Response({
-                'message': f'Account locked due to multiple failed attempts. Try again in {lockout_minutes} minutes.',
+                'message': f'Account locked. Try again in {lockout_minutes} minutes.',
                 'locked': True,
                 'lockout_minutes': lockout_minutes,
-                'require_captcha': user_obj.require_captcha,
+                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect=/admin&email={email}',
             }, status=status.HTTP_423_LOCKED)
         
         # Check if CAPTCHA required
         if user_obj.require_captcha:
             return Response({
-                'message': 'Too many failed attempts. Please complete CAPTCHA verification.',
+                'message': 'CAPTCHA required',
                 'require_captcha': True,
-                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),  # hCaptcha/Turnstile site key
+                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect=/admin&email={email}',
             }, status=status.HTTP_400_BAD_REQUEST)
 
         return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
@@ -166,48 +166,50 @@ def login_view(request):
     if user.is_locked():
         from django.utils import timezone
         lockout_minutes = int((user.lockout_until - timezone.now()).total_seconds() / 60)
+        redirect = '/admin' if user.role == 'admin' else '/dashboard'
         return Response({
-            'message': f'Account locked due to multiple failed attempts. Try again in {lockout_minutes} minutes.',
+            'message': f'Account locked. Try again in {lockout_minutes} minutes.',
             'locked': True,
             'lockout_minutes': lockout_minutes,
-            'require_captcha': user.require_captcha,
+            'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}',
         }, status=status.HTTP_423_LOCKED)
 
     # Verify CAPTCHA if required
     if user.require_captcha:
         if not captcha_token:
+            redirect = '/admin' if user.role == 'admin' else '/dashboard'
             return Response({
-                'message': 'CAPTCHA verification required.',
+                'message': 'CAPTCHA verification required',
                 'require_captcha': True,
-                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
+                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}',
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Verify CAPTCHA (hCaptcha/Turnstile)
+        # Verify CAPTCHA
         captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
         if not verify_captcha(captcha_token, captcha_secret):
-            return Response({'message': 'CAPTCHA verification failed. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Mark CAPTCHA as verified
         user.verify_captcha()
 
     # Check 2FA if enabled
     if user.two_fa_enabled:
         if not totp_code:
+            redirect = '/admin' if user.role == 'admin' else '/dashboard'
             return Response({
-                'message': 'Two-factor authentication required.',
+                'message': '2FA required',
                 'require_2fa': True,
+                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}&require_2fa=1',
             }, status=status.HTTP_200_OK)
         
         if not verify_totp(user.two_fa_secret, totp_code):
-            return Response({'message': 'Invalid 2FA code.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'Invalid 2FA code'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Successful login - reset failed attempts
+    # Successful login
     user.reset_failed_attempts()
 
     token, _ = Token.objects.get_or_create(user=user)
 
-    # Session expiry: 30 min for user, 3 hours for admin
-    expires_in = 30 * 60 if user.role == 'user' else 3 * 60 * 60  # seconds
+    expires_in = 30 * 60 if user.role == 'user' else 3 * 60 * 60
     from django.utils import timezone
     from datetime import timedelta
     expires_at = timezone.now() + timedelta(seconds=expires_in)
@@ -286,6 +288,83 @@ def verify_captcha(request):
 
     user.verify_captcha()
     return Response({'message': 'CAPTCHA verified successfully'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_challenge(request):
+    """Verify CAPTCHA or 2FA from challenge page and set session cookie."""
+    email = request.data.get('email')
+    captcha_token = request.data.get('captcha_token')
+    totp_code = request.data.get('totp_code')
+    redirect = request.data.get('redirect', '/')
+
+    if not email:
+        return Response({'message': 'Email required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Handle CAPTCHA verification
+    if user.require_captcha:
+        captcha_token = request.data.get('captcha_token')
+        if not captcha_token:
+            return Response({'message': 'CAPTCHA token required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+        if not verify_captcha(captcha_token, captcha_secret):
+            return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+
+        user.verify_captcha()
+
+    # Handle 2FA verification
+    if user.two_fa_enabled:
+        totp_code = request.data.get('totp_code')
+        if not totp_code:
+            return Response({'message': '2FA code required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not verify_totp(user.two_fa_secret, totp_code):
+            return Response({'message': 'Invalid 2FA code'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Reset failed attempts and generate token
+    user.reset_failed_attempts()
+    token, _ = Token.objects.get_or_create(user=user)
+
+    # Set response with token
+    expires_in = 30 * 60 if user.role == 'user' else 3 * 60 * 60
+    from django.utils import timezone
+    from datetime import timedelta
+    expires_at = timezone.now() + timedelta(seconds=expires_in)
+
+    response = Response({
+        'message': 'Login successful',
+        'token': token.key,
+        'expires_in': expires_in,
+        'expires_at': expires_at.isoformat(),
+        'redirect': redirect,
+        'user': {
+            'id': user.id,
+            'id_no': user.id_no,
+            'name': f"{user.firstname} {user.lastname}",
+            'email': user.email,
+            'role': user.role,
+        },
+    })
+
+    # Set httpOnly cookie for additional security
+    response.set_cookie(
+        'spes_token',
+        token.key,
+        max_age=expires_in,
+        httponly=True,
+        secure=True,
+        samesite='Lax',
+        path='/',
+    )
+
+    return response
 
 
 @api_view(['POST'])

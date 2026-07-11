@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL,GRAD,opsz@100..700,0..1,-50..200,20..48&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Material+Symbols+Outlined:wght,FILL,GRAD,opsz@100..700,0..1,-50..200,20..48&display=swap');
 
 :root {
   --primary: #0052cc;
@@ -37,4 +37,146 @@ input:focus {
   outline: none;
   border-color: var(--primary);
   box-shadow: 0 0 0 2px rgba(0, 82, 204, 0.2);
+}
+
+/* ===== SweetAlert2 Themed Styles ===== */
+.swal-themed-popup {
+  font-family: var(--font-family) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.swal-themed-title {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: var(--on-surface) !important;
+  margin-bottom: 12px !important;
+}
+
+.swal-themed-html {
+  font-size: 1rem !important;
+  color: var(--on-surface) !important;
+  line-height: 1.5 !important;
+}
+
+.swal-themed-actions {
+  margin-top: 24px !important;
+  gap: 12px !important;
+}
+
+.swal-themed-btn {
+  font-family: var(--font-family) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  padding: 12px 28px !important;
+  border-radius: 10px !important;
+  border: none !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.swal-themed-btn-confirm {
+  background-color: var(--primary) !important;
+  color: var(--on-primary) !important;
+}
+
+.swal-themed-btn-confirm:hover {
+  background-color: var(--primary-hover) !important;
+  transform: translateY(-1px);
+}
+
+.swal-themed-btn-cancel {
+  background-color: var(--background) !important;
+  color: var(--secondary) !important;
+  border: 1px solid var(--outline-variant) !important;
+}
+
+.swal-themed-btn-cancel:hover {
+  background-color: var(--outline-variant) !important;
+}
+
+.swal-themed-icon {
+  font-size: 4rem !important;
+}
+
+.swal-themed-popup .swal2-icon.swal2-success {
+  border-color: var(--success) !important;
+  color: var(--success) !important;
+}
+
+.swal-themed-popup .swal2-icon.swal2-error {
+  border-color: var(--error) !important;
+  color: var(--error) !important;
+}
+
+.swal-themed-popup .swal2-icon.swal2-warning {
+  border-color: #f39c12 !important;
+  color: #f39c12 !important;
+}
+
+.swal-themed-popup .swal2-icon.swal2-info {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+.swal-themed-popup .swal2-icon.swal2-question {
+  border-color: var(--primary) !important;
+  color: var(--primary) !important;
+}
+
+/* Themed Swal for layouts */
+.themed-swal-popup {
+  font-family: var(--font-family) !important;
+  border-radius: 16px !important;
+  padding: 24px !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15) !important;
+}
+
+.themed-swal-title {
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  color: var(--on-surface) !important;
+  margin-bottom: 12px !important;
+}
+
+.themed-swal-content {
+  font-size: 1rem !important;
+  color: var(--on-surface) !important;
+  line-height: 1.5 !important;
+}
+
+.themed-swal-confirm {
+  font-family: var(--font-family) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  padding: 12px 28px !important;
+  border-radius: 10px !important;
+  border: none !important;
+  cursor: pointer !important;
+  background-color: var(--primary) !important;
+  color: var(--on-primary) !important;
+  transition: all 0.2s ease !important;
+}
+
+.themed-swal-confirm:hover {
+  background-color: var(--primary-hover) !important;
+  transform: translateY(-1px);
+}
+
+.themed-swal-cancel {
+  font-family: var(--font-family) !important;
+  font-size: 1rem !important;
+  font-weight: 600 !important;
+  padding: 12px 28px !important;
+  border-radius: 10px !important;
+  border: 1px solid var(--outline-variant) !important;
+  background-color: var(--background) !important;
+  color: var(--secondary) !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+}
+
+.themed-swal-cancel:hover {
+  background-color: var(--outline-variant) !important;
 }

@@ -7,10 +7,15 @@
       "**/node_modules/**"
     ],
     "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
+      { "source": "/admin", "destination": "/admin.html" },
+      { "source": "/admin/attendance", "destination": "/admin/attendance.html" },
+      { "source": "/admin/employees", "destination": "/admin/employees.html" },
+      { "source": "/admin/login", "destination": "/admin/login.html" },
+      { "source": "/admin/reports", "destination": "/admin/reports.html" },
+      { "source": "/dashboard", "destination": "/dashboard.html" },
+      { "source": "/dashboard/history", "destination": "/dashboard/history.html" },
+      { "source": "/dashboard/reports", "destination": "/dashboard/reports.html" },
+      { "source": "**", "destination": "/index.html" }
     ]
   }
 }

@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8000/api';
+const API_URL = 'https://spes-attendance-app.onrender.com/api';
 
 export async function authenticateUser(email, password) {
   const res = await fetch(`${API_URL}/login/`, {

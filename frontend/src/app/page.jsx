@@ -18,9 +18,31 @@ export default function Login() {
 
   const emailRef = useRef();
   const passwordRef = useRef();
+  const twoFaVerifiedRef = useRef(null);
 
   // Check security requirements on page load and email change
   useEffect(() => {
+    // Check if returning from 2FA verification on challenge page
+    const urlParams = new URLSearchParams(window.location.search);
+    const twoFaVerified = urlParams.get('2fa_verified');
+    twoFaVerifiedRef.current = twoFaVerified;
+
+    // Clean URL params to avoid stale state
+    if (twoFaVerified || urlParams.toString()) {
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+
+    // On first visit, show challenge page with CAPTCHA
+    const verified = sessionStorage.getItem('captcha_verified');
+    if (!verified && !twoFaVerified) {
+      const params = new URLSearchParams({
+        type: 'captcha',
+        fresh: '1',
+        redirect: '/'
+      });
+      window.location.href = `/challenge?${params.toString()}`;
+      return;
+    }
     checkRequirements();
   }, []);
 
@@ -34,11 +56,10 @@ export default function Login() {
     try {
       const reqs = await checkLoginRequirements(email);
       if (reqs.locked) {
-        // Redirect to challenge page with lockout info
         const params = new URLSearchParams({
           type: 'locked',
           email: email,
-          minutes: reqs.lockout_minutes,
+          minutes: reqs.lockout_minutes || 5,
           redirect: '/'
         });
         window.location.href = `/challenge?${params.toString()}`;
@@ -48,7 +69,7 @@ export default function Login() {
         const params = new URLSearchParams({
           type: 'captcha',
           email: email,
-          site_key: reqs.site_key,
+          site_key: reqs.site_key || '',
           redirect: '/'
         });
         window.location.href = `/challenge?${params.toString()}`;
@@ -83,8 +104,10 @@ export default function Login() {
       return;
     }
 
+    const twoFaVerifiedFor = twoFaVerifiedRef.current;
+
     try {
-      const result = await authenticateUser(email, password);
+      const result = await authenticateUser(email, password, null, null, twoFaVerifiedFor === email ? email : null);
 
       if (result.error) {
         const data = result.error;
@@ -93,25 +116,25 @@ export default function Login() {
           const params = new URLSearchParams({
             type: 'locked',
             email: email,
-            minutes: data.lockoutMinutes,
+            minutes: data.lockout_minutes || data.lockoutMinutes || 5,
             redirect: '/'
           });
           window.location.href = `/challenge?${params.toString()}`;
           return;
         }
 
-        if (data.requireCaptcha) {
+        if (data.require_captcha || data.requireCaptcha) {
           const params = new URLSearchParams({
             type: 'captcha',
             email: email,
-            site_key: data.siteKey,
+            site_key: data.site_key || data.siteKey || '',
             redirect: '/'
           });
           window.location.href = `/challenge?${params.toString()}`;
           return;
         }
 
-        if (data.require2fa) {
+        if (data.require_2fa || data.require2fa) {
           const params = new URLSearchParams({
             type: '2fa',
             email: email,

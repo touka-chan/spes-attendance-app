@@ -154,6 +154,7 @@ def login_view(request):
             return Response({
                 'message': 'CAPTCHA required',
                 'require_captcha': True,
+                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
                 'challenge_url': f'https://spes-attendance.web.app/challenge?redirect=/admin&email={email}',
             }, status=status.HTTP_400_BAD_REQUEST)
 
@@ -181,6 +182,7 @@ def login_view(request):
             return Response({
                 'message': 'CAPTCHA verification required',
                 'require_captcha': True,
+                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
                 'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}',
             }, status=status.HTTP_400_BAD_REQUEST)
         
@@ -193,15 +195,18 @@ def login_view(request):
 
     # Check 2FA if enabled
     if user.two_fa_enabled:
-        if not totp_code:
+        totp_verified_for = request.data.get('totp_verified_for', '')
+        # Skip 2FA if already verified via challenge page
+        if totp_verified_for == email:
+            pass
+        elif not totp_code:
             redirect = '/admin' if user.role == 'admin' else '/dashboard'
             return Response({
                 'message': '2FA required',
                 'require_2fa': True,
                 'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}&require_2fa=1',
             }, status=status.HTTP_200_OK)
-        
-        if not verify_totp(user.two_fa_secret, totp_code):
+        elif not verify_totp(user.two_fa_secret, totp_code):
             return Response({'message': 'Invalid 2FA code'}, status=status.HTTP_400_BAD_REQUEST)
 
     # Successful login
@@ -298,6 +303,15 @@ def verify_challenge(request):
     totp_code = request.data.get('totp_code')
     redirect = request.data.get('redirect', '/')
 
+    captcha_token = request.data.get('captcha_token')
+
+    # Handle fresh CAPTCHA verification (no email yet - first visit challenge)
+    if not email and captcha_token:
+        captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+        if not verify_captcha(captcha_token, captcha_secret):
+            return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'message': 'CAPTCHA verified successfully', 'fresh_verified': True})
+
     if not email:
         return Response({'message': 'Email required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -306,9 +320,8 @@ def verify_challenge(request):
     except User.DoesNotExist:
         return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Handle CAPTCHA verification
+    # Handle CAPTCHA verification for known user
     if user.require_captcha:
-        captcha_token = request.data.get('captcha_token')
         if not captcha_token:
             return Response({'message': 'CAPTCHA token required'}, status=status.HTTP_400_BAD_REQUEST)
 
@@ -327,43 +340,20 @@ def verify_challenge(request):
         if not verify_totp(user.two_fa_secret, totp_code):
             return Response({'message': 'Invalid 2FA code'}, status=status.HTTP_400_BAD_REQUEST)
 
-    # Reset failed attempts and generate token
-    user.reset_failed_attempts()
-    token, _ = Token.objects.get_or_create(user=user)
-
-    # Set response with token
-    expires_in = 30 * 60 if user.role == 'user' else 3 * 60 * 60
-    from django.utils import timezone
-    from datetime import timedelta
-    expires_at = timezone.now() + timedelta(seconds=expires_in)
-
-    response = Response({
-        'message': 'Login successful',
-        'token': token.key,
-        'expires_in': expires_in,
-        'expires_at': expires_at.isoformat(),
+    # Challenge verified - redirect back to login
+    return Response({
+        'message': 'Challenge verified successfully',
         'redirect': redirect,
-        'user': {
-            'id': user.id,
-            'id_no': user.id_no,
-            'name': f"{user.firstname} {user.lastname}",
-            'email': user.email,
-            'role': user.role,
-        },
     })
 
-    # Set httpOnly cookie for additional security
-    response.set_cookie(
-        'spes_token',
-        token.key,
-        max_age=expires_in,
-        httponly=True,
-        secure=True,
-        samesite='Lax',
-        path='/',
-    )
 
-    return response
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def get_site_key(request):
+    """Return the Turnstile CAPTCHA site key for frontend."""
+    return Response({
+        'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
+    })
 
 
 @api_view(['POST'])

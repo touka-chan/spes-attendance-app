@@ -9,6 +9,7 @@ urlpatterns = [
     path('login/setup-2fa/', views.setup_2fa, name='setup-2fa'),
     path('login/verify-2fa/', views.verify_2fa_setup, name='verify-2fa'),
     path('login/disable-2fa/', views.disable_2fa, name='disable-2fa'),
+    path('get-site-key/', views.get_site_key, name='get-site-key'),
     path('register/', views.register_view, name='register'),
     path('logout/', views.logout_view, name='logout'),
     path('user/', views.user_view, name='user'),

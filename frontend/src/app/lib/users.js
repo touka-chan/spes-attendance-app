@@ -1,9 +1,10 @@
 const API_URL = 'https://spes-attendance-app.onrender.com/api';
 
-export async function authenticateUser(email, password, captchaToken = null, totpCode = null) {
+export async function authenticateUser(email, password, captchaToken = null, totpCode = null, totpVerifiedFor = null) {
   const body = { email, password };
   if (captchaToken) body.captcha_token = captchaToken;
   if (totpCode) body.totp_code = totpCode;
+  if (totpVerifiedFor) body.totp_verified_for = totpVerifiedFor;
 
   const res = await fetch(`${API_URL}/login/`, {
     method: 'POST',

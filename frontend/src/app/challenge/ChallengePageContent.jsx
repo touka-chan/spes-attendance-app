@@ -18,6 +18,8 @@ export default function ChallengePageContent() {
   const [totpCode, setTotpCode] = useState('');
   const [widgetId, setWidgetId] = useState(null);
   const [captchaError, setCaptchaError] = useState('');
+  const [isFresh, setIsFresh] = useState(false);
+  const [siteKeyLoaded, setSiteKeyLoaded] = useState(false);
 
   // Parse URL params
   useEffect(() => {
@@ -25,11 +27,38 @@ export default function ChallengePageContent() {
     const t = searchParams.get('type') || '';
     const k = searchParams.get('site_key') || '';
     const r = searchParams.get('redirect') || '/';
+    const f = searchParams.get('fresh') || '';
 
+    setIsFresh(f === '1');
     setEmail(e);
     setType(t);
     setSiteKey(k);
     setRedirectUrl(r);
+
+    const FALLBACK_SITE_KEY = '0x4AAAAAADz4Rw2SNZMVKi8i';
+
+    // For fresh visits, fetch site_key from backend if not in URL
+    if (f === '1' && !k) {
+      fetch('https://spes-attendance-app.onrender.com/api/get-site-key/', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      })
+        .then(res => res.json())
+        .then(data => {
+          setSiteKey(data.site_key || FALLBACK_SITE_KEY);
+          setSiteKeyLoaded(true);
+        })
+        .catch(() => {
+          setSiteKey(FALLBACK_SITE_KEY);
+          setSiteKeyLoaded(true);
+        });
+    } else if (k) {
+      setSiteKeyLoaded(true);
+    } else {
+      // No site key in URL and not a fresh visit - use fallback
+      setSiteKey(FALLBACK_SITE_KEY);
+      setSiteKeyLoaded(true);
+    }
   }, [searchParams]);
 
   // Load Turnstile script
@@ -79,7 +108,7 @@ export default function ChallengePageContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
+          email: isFresh ? '' : email,
           captcha_token: token,
           redirect_url: redirectUrl
         }),
@@ -88,7 +117,24 @@ export default function ChallengePageContent() {
       const data = await res.json();
 
       if (res.ok) {
-        window.location.href = redirectUrl;
+        if (isFresh) {
+          // Fresh visit: store in sessionStorage, redirect to login
+          sessionStorage.setItem('captcha_verified', 'true');
+          window.location.href = redirectUrl;
+        } else if (email && !isFresh) {
+          // Known user: CAPTCHA/2FA verified, redirect to login
+          const searchParams = new URLSearchParams(window.location.search);
+          const type = searchParams.get('type');
+          let dest = redirectUrl;
+          if (type === '2fa') {
+            dest = redirectUrl.includes('?') 
+              ? `${redirectUrl}&2fa_verified=${encodeURIComponent(email)}`
+              : `${redirectUrl}?2fa_verified=${encodeURIComponent(email)}`;
+          }
+          window.location.href = dest;
+        } else {
+          window.location.href = redirectUrl;
+        }
       } else {
         throw new Error(data.message || 'Verification failed');
       }

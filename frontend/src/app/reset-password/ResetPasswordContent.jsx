@@ -15,6 +15,7 @@ export default function ResetPasswordContent() {
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -63,6 +64,7 @@ export default function ResetPasswordContent() {
             <div className={styles.inputGroup}>
               <label>New Password</label>
               <div className={styles.inputWrapper}>
+                <span className="material-symbols-outlined">lock</span>
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -73,10 +75,12 @@ export default function ResetPasswordContent() {
                 />
                 <button
                   type="button"
-                  className={styles.toggleBtn}
+                  className={styles.visibilityBtn}
                   onClick={() => setShowPassword(!showPassword)}
                 >
-                  {showPassword ? '🙈' : '👁'}
+                  <span className="material-symbols-outlined">
+                    {showPassword ? "visibility_off" : "visibility"}
+                  </span>
                 </button>
               </div>
             </div>
@@ -84,14 +88,24 @@ export default function ResetPasswordContent() {
             <div className={styles.inputGroup}>
               <label>Confirm Password</label>
               <div className={styles.inputWrapper}>
+                <span className="material-symbols-outlined">lock</span>
                 <input
-                  type={showPassword ? 'text' : 'password'}
+                  type={showConfirm ? 'text' : 'password'}
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="••••••••"
                   required
                   disabled={loading}
                 />
+                <button
+                  type="button"
+                  className={styles.visibilityBtn}
+                  onClick={() => setShowConfirm(!showConfirm)}
+                >
+                  <span className="material-symbols-outlined">
+                    {showConfirm ? "visibility_off" : "visibility"}
+                  </span>
+                </button>
               </div>
             </div>
 

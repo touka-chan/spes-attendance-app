@@ -15,6 +15,7 @@
       { "source": "/dashboard", "destination": "/dashboard.html" },
       { "source": "/dashboard/history", "destination": "/dashboard/history.html" },
       { "source": "/dashboard/reports", "destination": "/dashboard/reports.html" },
+      { "source": "/reset-password", "destination": "/reset-password.html" },
       { "source": "**", "destination": "/index.html" }
     ]
   }

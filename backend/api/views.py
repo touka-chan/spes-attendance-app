@@ -1,4 +1,5 @@
 import os
+import secrets
 import requests
 from datetime import time as time_obj, timedelta
 from django.utils import timezone
@@ -10,7 +11,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
-from .models import User, Attendance, AttendanceSettings
+from .models import User, Attendance, AttendanceSettings, PasswordResetToken
 
 
 def _get_settings():
@@ -509,32 +510,31 @@ def forgot_password_view(request):
     try:
         user = User.objects.get(email=email)
     except User.DoesNotExist:
-        return Response({'message': 'Email not found'}, status=status.HTTP_404_NOT_FOUND)
+        # Don't reveal if email exists
+        return Response({'message': 'If the email exists, a reset link will be sent.'})
 
-    temp_password = get_random_string(10)
-    user.set_password(temp_password)
-    user.save()
+    # Delete old unused tokens for this user
+    PasswordResetToken.objects.filter(user=user, used=False).delete()
 
+    # Create new reset token (valid for 1 hour)
+    token = secrets.token_urlsafe(32)
+    expires_at = timezone.now() + timedelta(hours=1)
+    PasswordResetToken.objects.create(user=user, token=token, expires_at=expires_at)
+
+    # Send reset link email
+    reset_url = f"https://spes-attendance.web.app/reset-password?token={token}"
+    
     try:
-        brevo_key = os.getenv('BREVO_API_KEY')
-        if brevo_key:
-            requests.post(
-                'https://api.brevo.com/v3/smtp/email',
-                headers={
-                    'api-key': brevo_key,
-                    'Content-Type': 'application/json',
-                },
-                json={
-                    'sender': {'email': os.getenv('DEFAULT_FROM_EMAIL'), 'name': 'SpesAttendance'},
-                    'to': [{'email': email}],
-                    'subject': 'SpesAttendance - Password Reset',
-                    'textContent': f"Hello {user.firstname},\n\nYour password has been reset.\n\nEmail: {email}\nNew Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team",
-                },
-                timeout=10,
-            )
-            print(f"Brevo reset email sent to {email}")
+        send_mail(
+            subject='SpesAttendance - Password Reset',
+            message=f"Hello {user.firstname},\n\nClick the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\n- SpesAttendance Team",
+            from_email=os.getenv('DEFAULT_FROM_EMAIL'),
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        print(f"Reset email sent to {email}")
     except Exception as e:
-        print(f"Brevo email error: {e}")
+        print(f"Email error: {e}")
         return Response({'message': 'Failed to send email. Check Render logs.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    return Response({'message': 'Check your email for the new password.'})
+    return Response({'message': 'If the email exists, a reset link will be sent.'})

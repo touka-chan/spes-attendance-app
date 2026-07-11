@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import styles from './admin.module.css';
 import { getSettings, updateSettings } from '../lib/api';
+import { showToast } from '../lib/alerts';
 
 export default function AdminPanel() {
   const [settings, setSettings] = useState(null);
@@ -12,7 +13,6 @@ export default function AdminPanel() {
   const [clockInEnabled, setClockInEnabled] = useState(false);
   const [clockOutEnabled, setClockOutEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState('');
 
   useEffect(() => {
     getSettings().then(res => {
@@ -28,15 +28,13 @@ export default function AdminPanel() {
 
   const handleSave = async () => {
     setSaving(true);
-    setMsg('');
     try {
       await updateSettings({ clock_in_start: clockInStart, clock_in_end: clockInEnd, clock_out_start: clockOutStart, clock_out_end: clockOutEnd, clock_in_enabled: clockInEnabled, clock_out_enabled: clockOutEnabled });
-      setMsg('Settings saved');
+      showToast('success', 'Settings saved');
     } catch (e) {
-      setMsg('Error: ' + e.message);
+      showToast('error', e.message);
     }
     setSaving(false);
-    setTimeout(() => setMsg(''), 3000);
   };
 
   return (
@@ -131,7 +129,7 @@ export default function AdminPanel() {
             {saving ? 'SAVING...' : 'SAVE'}
           </button>
         </div>
-        {msg && <p style={{ fontSize: 13, color: 'var(--success)', marginTop: 0 }}>{msg}</p>}
+
       </div>
     </>
   );

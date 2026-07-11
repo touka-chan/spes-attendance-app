@@ -2,17 +2,21 @@
 import { useState, useEffect } from 'react';
 import styles from '../admin.module.css';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from '../../lib/api';
+import { showCredentials, showSuccess, showError, showConfirm } from '../../lib/alerts';
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
   const [form, setForm] = useState({ firstname: '', middlename: '', lastname: '', suffix: '', email: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => { fetchEmployees(); }, []);
 
   const fetchEmployees = () => {
-    getEmployees().then(setEmployees).catch(() => {});
+    setLoading(true);
+    getEmployees().then(setEmployees).catch(() => {}).finally(() => setLoading(false));
   };
 
   const openAdd = () => {
@@ -28,31 +32,36 @@ export default function EmployeesPage() {
   };
 
   const handleSave = async () => {
+    setSaving(true);
     try {
       if (editId) {
         await updateEmployee(editId, form);
+        showSuccess('Updated', 'Employee updated successfully.');
       } else {
         const res = await createEmployee(form);
         if (res.temp_password) {
-          alert(`Employee created!\n\nEmail: ${res.email}\nID No.: ${res.id_no}\nTemporary Password: ${res.temp_password}\n\nPlease share these credentials with the employee.`);
+          showCredentials(res.email, res.id_no, res.temp_password);
         } else {
-          alert('Employee created successfully!');
+          showSuccess('Created', 'Employee created successfully.');
         }
       }
       setShowForm(false);
       fetchEmployees();
     } catch (e) {
-      alert('Error: ' + e.message);
+      showError('Error', e.message);
     }
+    setSaving(false);
   };
 
   const handleDelete = async (id) => {
-    if (!confirm('Delete this employee?')) return;
+    const result = await showConfirm('Delete Employee?', 'This action cannot be undone.');
+    if (!result.isConfirmed) return;
     try {
       await deleteEmployee(id);
+      showSuccess('Deleted', 'Employee removed successfully.');
       fetchEmployees();
     } catch (e) {
-      alert('Error: ' + e.message);
+      showError('Error', e.message);
     }
   };
 
@@ -109,8 +118,10 @@ export default function EmployeesPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 24 }}>
-              <button className={styles.btnSecondary} onClick={() => setShowForm(false)}>Cancel</button>
-              <button className={styles.btnPrimary} onClick={handleSave}>{editId ? 'Update' : 'Create'}</button>
+              <button className={styles.btnSecondary} onClick={() => setShowForm(false)} disabled={saving}>Cancel</button>
+              <button className={styles.btnPrimary} onClick={handleSave} disabled={saving}>
+                {saving ? 'SAVING...' : (editId ? 'Update' : 'Create')}
+              </button>
             </div>
           </div>
         </div>
@@ -128,7 +139,11 @@ export default function EmployeesPage() {
               </tr>
             </thead>
             <tbody>
-              {employees.map(emp => (
+              {loading ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>Loading employees...</td></tr>
+              ) : employees.length === 0 ? (
+                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No employees found.</td></tr>
+              ) : employees.map(emp => (
                 <tr key={emp.id}>
                   <td>{emp.id_no}</td>
                   <td style={{ fontWeight: 600 }}>{emp.firstname} {emp.lastname}</td>
@@ -143,9 +158,6 @@ export default function EmployeesPage() {
                   </td>
                 </tr>
               ))}
-              {employees.length === 0 && (
-                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No employees found.</td></tr>
-              )}
             </tbody>
           </table>
         </div>

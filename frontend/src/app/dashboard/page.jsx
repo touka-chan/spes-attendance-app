@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import styles from './dashboard.module.css';
 import { clockIn, clockOut, getHistory, getSettings, getActiveSession } from '../lib/api';
+import { showToast } from '../lib/alerts';
 
 export default function Dashboard() {
   const [clockedIn, setClockedIn] = useState(false);
@@ -11,18 +12,20 @@ export default function Dashboard() {
   const [now, setNow] = useState(new Date());
   const [error, setError] = useState('');
   const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [clocking, setClocking] = useState(false);
 
   useEffect(() => {
-    getActiveSession().then(session => {
-      if (session) {
-        setClockedIn(true);
-        setClockInTime(new Date(session.clock_in));
-      }
-    }).catch(() => {});
-
-    getSettings().then(setSettings).catch(() => {});
-
-    getHistory().then(setHistory).catch(() => {});
+    Promise.all([
+      getActiveSession().then(session => {
+        if (session) {
+          setClockedIn(true);
+          setClockInTime(new Date(session.clock_in));
+        }
+      }).catch(() => {}),
+      getSettings().then(setSettings).catch(() => {}),
+      getHistory().then(setHistory).catch(() => {}),
+    ]).finally(() => setLoading(false));
 
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
@@ -49,6 +52,7 @@ export default function Dashboard() {
   };
 
   const handleClockIn = async () => {
+    setClocking(true);
     try {
       const res = await clockIn();
       const time = new Date(res.attendance.clock_in);
@@ -56,25 +60,30 @@ export default function Dashboard() {
       setClockInTime(time);
       setClockOutTime(null);
       setError('');
+      showToast('success', `Clocked in at ${time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`);
     } catch (e) {
       if (e.message.includes('disabled')) setError('Contact your administrator to enable clock-in.');
       else if (e.message.includes('only allowed')) setError(e.message);
       else setError(e.message);
     }
+    setClocking(false);
   };
 
   const handleClockOut = async () => {
+    setClocking(true);
     try {
       const res = await clockOut();
       const time = new Date(res.attendance.clock_out);
       setClockedIn(false);
       setClockOutTime(time);
       setError('');
+      showToast('success', `Clocked out at ${time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`);
     } catch (e) {
       if (e.message.includes('disabled')) setError('Contact your administrator to enable clock-out.');
       else if (e.message.includes('only allowed')) setError(e.message);
       else setError(e.message);
     }
+    setClocking(false);
   };
 
   return (
@@ -96,15 +105,20 @@ export default function Dashboard() {
               Clock-out is disabled. Allowed window: {settings.clock_out_start} - {settings.clock_out_end}.
             </p>
           )}
-          {clockedIn ? (
-            <button className={`${styles.clockBtn} ${styles.clockBtnError}`} onClick={handleClockOut}>
-              <span className="material-symbols-outlined">logout</span>
-              CLOCK OUT
+          {loading ? (
+            <button className={styles.clockBtn} disabled style={{ opacity: 0.5 }}>
+              <span className="material-symbols-outlined">hourglass_top</span>
+              LOADING...
+            </button>
+          ) : clockedIn ? (
+            <button className={`${styles.clockBtn} ${styles.clockBtnError}`} onClick={handleClockOut} disabled={clocking}>
+              <span className="material-symbols-outlined">{clocking ? 'hourglass_top' : 'logout'}</span>
+              {clocking ? 'PROCESSING...' : 'CLOCK OUT'}
             </button>
           ) : (
-            <button className={styles.clockBtn} onClick={handleClockIn}>
-              <span className="material-symbols-outlined">login</span>
-              CLOCK IN
+            <button className={styles.clockBtn} onClick={handleClockIn} disabled={clocking}>
+              <span className="material-symbols-outlined">{clocking ? 'hourglass_top' : 'login'}</span>
+              {clocking ? 'PROCESSING...' : 'CLOCK IN'}
             </button>
           )}
           {clockOutTime && (
@@ -145,7 +159,11 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {history.map(item => (
+                {loading ? (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>Loading history...</td></tr>
+                ) : history.length === 0 ? (
+                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No attendance records yet.</td></tr>
+                ) : history.map(item => (
                   <tr key={item.id}>
                     <td>{new Date(item.clock_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                     <td>{new Date(item.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>

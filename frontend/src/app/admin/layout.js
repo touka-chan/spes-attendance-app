@@ -4,6 +4,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import styles from './admin.module.css';
 import Link from 'next/link';
 import Image from 'next/image';
+import Swal from 'sweetalert2';
 
 export default function AdminLayout({ children }) {
   const router = useRouter();
@@ -32,6 +33,8 @@ export default function AdminLayout({ children }) {
   }, []);
 
   const handleLogout = async () => {
+    const result = await Swal.fire({ icon: 'question', title: 'Sign Out?', showCancelButton: true, confirmButtonColor: '#d32f2f', cancelButtonColor: '#6b7280', confirmButtonText: 'Sign Out' });
+    if (!result.isConfirmed) return;
     try { await fetch('https://spes-attendance-app.onrender.com/api/logout/', { method: 'POST', headers: { 'Authorization': `Token ${localStorage.getItem('spesToken')}`, 'Accept': 'application/json' } }); } catch {}
     localStorage.removeItem('spesAuth');
     localStorage.removeItem('spesToken');

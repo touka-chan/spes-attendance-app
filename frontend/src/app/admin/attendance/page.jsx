@@ -5,9 +5,10 @@ import { request } from '../../lib/api';
 
 export default function AttendancePage() {
   const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    request('/admin/attendance/').then(setRecords).catch(() => {});
+    request('/admin/attendance/').then(setRecords).catch(() => {}).finally(() => setLoading(false));
   }, []);
 
   return (
@@ -39,7 +40,11 @@ export default function AttendancePage() {
               </tr>
             </thead>
             <tbody>
-              {records.map(item => (
+              {loading ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>Loading attendance records...</td></tr>
+              ) : records.length === 0 ? (
+                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No attendance records found.</td></tr>
+              ) : records.map(item => (
                 <tr key={item.id}>
                   <td style={{ fontWeight: 600 }}>{item.user_name}</td>
                   <td>{item.user_id_no}</td>
@@ -50,9 +55,6 @@ export default function AttendancePage() {
                   <td>{item.duration || '--'}</td>
                 </tr>
               ))}
-              {records.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No attendance records found.</td></tr>
-              )}
             </tbody>
           </table>
         </div>

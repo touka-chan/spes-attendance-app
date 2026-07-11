@@ -371,7 +371,9 @@ def employees_view(request):
     except Exception:
         pass
 
-    return Response(_serialize_user(user), status=status.HTTP_201_CREATED)
+    result = _serialize_user(user)
+    result['temp_password'] = temp_password
+    return Response(result, status=status.HTTP_201_CREATED)
 
 
 @api_view(['PUT', 'DELETE'])

@@ -36,7 +36,6 @@ class User(AbstractUser):
 
     class Meta:
         db_table = 'users'
-        managed = False
 
     def __str__(self):
         return f"{self.get_full_name} ({self.id_no})"
@@ -65,7 +64,6 @@ class AttendanceSettings(models.Model):
 
     class Meta:
         db_table = 'attendance_settings'
-        managed = False
 
 
 class Attendance(models.Model):
@@ -78,7 +76,6 @@ class Attendance(models.Model):
     class Meta:
         db_table = 'attendance'
         ordering = ['-clock_in']
-        managed = False
 
     def __str__(self):
         return f"{self.user.email} - {self.clock_in}"

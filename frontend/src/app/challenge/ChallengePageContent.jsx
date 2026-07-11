@@ -1,8 +1,10 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import styles from './challenge.module.css';
 import Image from 'next/image';
+
+const FALLBACK_SITE_KEY = '0x4AAAAAADz4Rw2SNZMVKi8i';
 
 export default function ChallengePageContent() {
   const router = useRouter();
@@ -14,14 +16,15 @@ export default function ChallengePageContent() {
   const [redirectUrl, setRedirectUrl] = useState('/');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [captchaToken, setCaptchaToken] = useState('');
   const [totpCode, setTotpCode] = useState('');
   const [widgetId, setWidgetId] = useState(null);
   const [captchaError, setCaptchaError] = useState('');
   const [isFresh, setIsFresh] = useState(false);
-  const [siteKeyLoaded, setSiteKeyLoaded] = useState(false);
+  const [turnstileReady, setTurnstileReady] = useState(false);
+  const [widgetTimeout, setWidgetTimeout] = useState(false);
+  const captchaHandledRef = useRef(false);
 
-  // Parse URL params
+  // Parse URL params and set site key
   useEffect(() => {
     const e = searchParams.get('email') || '';
     const t = searchParams.get('type') || '';
@@ -32,54 +35,39 @@ export default function ChallengePageContent() {
     setIsFresh(f === '1');
     setEmail(e);
     setType(t);
-    setSiteKey(k);
+    setSiteKey(k || FALLBACK_SITE_KEY);
     setRedirectUrl(r);
-
-    const FALLBACK_SITE_KEY = '0x4AAAAAADz4Rw2SNZMVKi8i';
-
-    // For fresh visits, fetch site_key from backend if not in URL
-    if (f === '1' && !k) {
-      fetch('https://spes-attendance-app.onrender.com/api/get-site-key/', {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' }
-      })
-        .then(res => res.json())
-        .then(data => {
-          setSiteKey(data.site_key || FALLBACK_SITE_KEY);
-          setSiteKeyLoaded(true);
-        })
-        .catch(() => {
-          setSiteKey(FALLBACK_SITE_KEY);
-          setSiteKeyLoaded(true);
-        });
-    } else if (k) {
-      setSiteKeyLoaded(true);
-    } else {
-      // No site key in URL and not a fresh visit - use fallback
-      setSiteKey(FALLBACK_SITE_KEY);
-      setSiteKeyLoaded(true);
-    }
   }, [searchParams]);
 
-  // Load Turnstile script
+  // Load Turnstile script and track when ready
   useEffect(() => {
-    if (!window.turnstile) {
-      const script = document.createElement('script');
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
-      script.async = true;
-      script.defer = true;
-      document.head.appendChild(script);
+    if (window.turnstile) {
+      setTurnstileReady(true);
+      return;
     }
+    const script = document.createElement('script');
+    script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoad';
+    script.async = true;
+    script.defer = true;
+    window.onTurnstileLoad = () => setTurnstileReady(true);
+    document.head.appendChild(script);
+    return () => { delete window.onTurnstileLoad; };
   }, []);
 
-  // Render Turnstile widget
+  // Fallback: if widget hasn't rendered after 10s, show retry option
   useEffect(() => {
-    if (!window.turnstile || !siteKey || type !== 'captcha' || widgetId) return;
+    if (type !== 'captcha' || widgetId || turnstileReady) return;
+    const timer = setTimeout(() => setWidgetTimeout(true), 10000);
+    return () => clearTimeout(timer);
+  }, [type, widgetId, turnstileReady]);
 
+  const renderWidget = () => {
+    if (!window.turnstile || !siteKey || widgetId) return;
     const id = window.turnstile.render('#captcha-widget', {
       sitekey: siteKey,
       theme: 'light',
       callback: (token) => {
+        captchaHandledRef.current = true;
         handleCaptchaSuccess(token);
       },
       'expired-callback': () => {
@@ -90,9 +78,17 @@ export default function ChallengePageContent() {
       },
     });
     setWidgetId(id);
-  }, [siteKey, type, widgetId]);
+    setWidgetTimeout(false);
+  };
 
-  // Reset widget when re-shown
+  // Render Turnstile widget when ready
+  useEffect(() => {
+    if (turnstileReady && siteKey && type === 'captcha' && !widgetId) {
+      renderWidget();
+    }
+  }, [turnstileReady, siteKey, type, widgetId]);
+
+  // Reset widget when re-shown (e.g. after error)
   useEffect(() => {
     if (widgetId && window.turnstile) {
       window.turnstile.reset(widgetId);
@@ -220,11 +216,36 @@ export default function ChallengePageContent() {
               <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'var(--primary)' }}>shield</span>
               <h3 style={{ margin: '12px 0 8px 0', fontSize: '18px', fontWeight: 600 }}>Verify you're human</h3>
               <p style={{ margin: 0, fontSize: '14px', color: 'var(--secondary)' }}>
-                Please complete the CAPTCHA to continue
+                {widgetId ? 'Please complete the CAPTCHA below' : 'Loading verification...'}
               </p>
             </div>
             
-            <div id="captcha-widget" style={{ display: 'inline-block' }}></div>
+            {!widgetId && !widgetTimeout && (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '20px' }}>
+                <div className={styles.spinner}></div>
+              </div>
+            )}
+            
+            <div id="captcha-widget" style={{ display: widgetId ? 'inline-block' : 'none' }}></div>
+            
+            {widgetTimeout && !widgetId && (
+              <div style={{ textAlign: 'center', padding: '16px' }}>
+                <p style={{ color: '#856404', background: '#fff3cd', padding: '12px', borderRadius: '8px', border: '1px solid #ffc107', fontSize: '14px' }}>
+                  Failed to load CAPTCHA. Please check your connection and try again.
+                </p>
+                <button onClick={() => { setWidgetTimeout(false); renderWidget(); }} className={styles.verifyBtn} style={{ marginTop: '12px' }}>
+                  Retry
+                </button>
+                {isFresh && (
+                  <button onClick={() => {
+                    sessionStorage.setItem('captcha_verified', 'true');
+                    window.location.href = redirectUrl;
+                  }} className={styles.verifyBtn} style={{ marginTop: '8px', background: 'var(--secondary)' }}>
+                    Continue to Login
+                  </button>
+                )}
+              </div>
+            )}
             
             {captchaError && (
               <p className={styles.captchaError}>
@@ -239,7 +260,7 @@ export default function ChallengePageContent() {
                   window.turnstile.execute(widgetId);
                 }
               }}
-              disabled={loading}
+              disabled={loading || !widgetId}
               className={styles.verifyBtn}
             >
               {loading ? 'Verifying...' : 'Verify & Continue'}

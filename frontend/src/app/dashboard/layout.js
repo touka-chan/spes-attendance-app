@@ -6,34 +6,96 @@ import Link from 'next/link';
 import Image from 'next/image';
 import Swal from 'sweetalert2';
 
+const THEMED_SWAL = {
+  background: 'var(--surface)',
+  color: 'var(--on-surface)',
+  confirmButtonColor: 'var(--primary)',
+  cancelButtonColor: 'var(--secondary)',
+  customClass: {
+    popup: 'themed-swal-popup',
+    title: 'themed-swal-title',
+    htmlContainer: 'themed-swal-content',
+    confirmButton: 'themed-swal-confirm',
+    cancelButton: 'themed-swal-cancel',
+  },
+};
+
 export default function DashboardLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
   const [authed, setAuthed] = useState(false);
   const [userName, setUserName] = useState('Alex');
   const [showNotif, setShowNotif] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
 
   useEffect(() => {
-    const auth = localStorage.getItem('spesAuth');
-    if (!auth) {
-      window.location.href = '/';
-    } else {
+    const checkAuth = () => {
+      const auth = localStorage.getItem('spesAuth');
+      if (!auth) {
+        window.location.href = '/';
+        return;
+      }
       try {
         const user = JSON.parse(auth);
         if (user.role !== 'user') {
           window.location.href = '/';
-        } else {
-          setAuthed(true);
-          setUserName((user.name || 'Alex').split(' ')[0]);
+          return;
         }
+        
+        // Check session expiry (30 min for user)
+        if (user.expiresAt) {
+          const expiresAt = new Date(user.expiresAt).getTime();
+          const now = Date.now();
+          if (now >= expiresAt) {
+            setSessionExpired(true);
+            return;
+          }
+        }
+        
+        setAuthed(true);
+        setUserName((user.name || 'Alex').split(' ')[0]);
       } catch {
         window.location.href = '/';
       }
-    }
+    };
+
+    checkAuth();
+    const interval = setInterval(checkAuth, 30000);
+    return () => clearInterval(interval);
   }, []);
 
+  const showSessionExpired = () => {
+    Swal.fire({
+      ...THEMED_SWAL,
+      icon: 'warning',
+      title: 'Session Expired',
+      text: 'Your session has expired. Please log in again.',
+      confirmButtonText: 'Log In Again',
+    }).then(() => {
+      localStorage.removeItem('spesAuth');
+      localStorage.removeItem('spesToken');
+      localStorage.removeItem('attendanceClock');
+      window.location.href = '/';
+    });
+  };
+
+  if (sessionExpired) {
+    if (!window.__sessionAlertShown) {
+      window.__sessionAlertShown = true;
+      showSessionExpired();
+    }
+    return null;
+  }
+
   const handleLogout = async () => {
-    const result = await Swal.fire({ icon: 'question', title: 'Sign Out?', showCancelButton: true, confirmButtonColor: '#d32f2f', cancelButtonColor: '#6b7280', confirmButtonText: 'Sign Out' });
+    const result = await Swal.fire({
+      ...THEMED_SWAL,
+      icon: 'question',
+      title: 'Sign Out?',
+      showCancelButton: true,
+      confirmButtonText: 'Sign Out',
+      cancelButtonText: 'Cancel',
+    });
     if (!result.isConfirmed) return;
     try { await fetch('https://spes-attendance-app.onrender.com/api/logout/', { method: 'POST', headers: { 'Authorization': `Token ${localStorage.getItem('spesToken')}`, 'Accept': 'application/json' } }); } catch {}
     localStorage.removeItem('spesAuth');

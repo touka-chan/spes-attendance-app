@@ -91,9 +91,17 @@ def login_view(request):
 
     token, _ = Token.objects.get_or_create(user=user)
 
+    # Session expiry: 30 min for user, 3 hours for admin
+    expires_in = 30 * 60 if user.role == 'user' else 3 * 60 * 60  # seconds
+    from django.utils import timezone
+    from datetime import timedelta
+    expires_at = timezone.now() + timedelta(seconds=expires_in)
+
     return Response({
         'message': 'Login successful',
         'token': token.key,
+        'expires_in': expires_in,
+        'expires_at': expires_at.isoformat(),
         'user': {
             'id': user.id,
             'id_no': user.id_no,

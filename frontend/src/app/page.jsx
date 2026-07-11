@@ -40,6 +40,8 @@ export default function Login() {
         name: user.name,
         email: user.email,
         loginTime: new Date().toISOString(),
+        expiresIn: user.expiresIn,
+        expiresAt: user.expiresAt,
       }));
 
       const dest = user.role === 'admin' ? '/admin' : '/dashboard';

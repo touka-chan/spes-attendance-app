@@ -18,5 +18,7 @@ export async function authenticateUser(email, password) {
     name: data.user.name,
     email: data.user.email,
     token: data.token,
+    expiresIn: data.expires_in,
+    expiresAt: data.expires_at,
   };
 }

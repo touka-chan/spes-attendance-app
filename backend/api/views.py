@@ -1,3 +1,4 @@
+import os
 from datetime import time as time_obj, timedelta
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -363,7 +364,7 @@ def employees_view(request):
         send_mail(
             subject='SpesAttendance - Account Created',
             message=f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
-            from_email=None,
+            from_email=os.getenv('EMAIL_HOST_USER'),
             recipient_list=[email],
             fail_silently=True,
         )
@@ -506,9 +507,9 @@ def forgot_password_view(request):
         send_mail(
             subject='SpesAttendance - Password Reset',
             message=f"Hello {user.firstname},\n\nYour password has been reset.\n\nEmail: {email}\nNew Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team",
-            from_email=None,
+            from_email=os.getenv('EMAIL_HOST_USER'),
             recipient_list=[email],
-            fail_silently=False,
+            fail_silently=True,
         )
     except Exception:
         return Response({'message': 'Failed to send email. Check server configuration.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

@@ -14,6 +14,7 @@ urlpatterns = [
     path('admin/analytics/', views.admin_analytics_view, name='admin-analytics'),
     path('user/analytics/', views.user_analytics_view, name='user-analytics'),
     path('forgot-password/', views.forgot_password_view, name='forgot-password'),
+    path('reset-password/', views.reset_password_view, name='reset-password'),
     path('admin/settings/', views.settings_view, name='settings'),
     path('admin/employees/', views.employees_view, name='employees'),
     path('admin/employees/<int:user_id>/', views.employee_detail_view, name='employee-detail'),

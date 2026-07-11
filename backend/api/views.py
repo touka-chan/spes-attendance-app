@@ -362,14 +362,15 @@ def employees_view(request):
 
     try:
         resend.api_key = os.getenv('RESEND_API_KEY')
-        resend.Emails.send({
+        resp = resend.Emails.send({
             'from': f'SpesAttendance <{os.getenv("EMAIL_HOST_USER")}>',
             'to': [email],
             'subject': 'SpesAttendance - Account Created',
             'text': f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
         })
-    except Exception:
-        pass
+        print(f"Resend success: {resp}")
+    except Exception as e:
+        print(f"Resend error: {e}")
 
     result = _serialize_user(user)
     result['temp_password'] = temp_password
@@ -507,13 +508,15 @@ def forgot_password_view(request):
 
     try:
         resend.api_key = os.getenv('RESEND_API_KEY')
-        resend.Emails.send({
+        resp = resend.Emails.send({
             'from': f'SpesAttendance <{os.getenv("EMAIL_HOST_USER")}>',
             'to': [email],
             'subject': 'SpesAttendance - Password Reset',
             'text': f"Hello {user.firstname},\n\nYour password has been reset.\n\nEmail: {email}\nNew Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team",
         })
-    except Exception:
-        return Response({'message': 'Failed to send email. Check RESEND_API_KEY.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        print(f"Resend success: {resp}")
+    except Exception as e:
+        print(f"Resend error: {e}")
+        return Response({'message': 'Failed to send email. Check Render logs.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'message': 'Check your email for the new password.'})

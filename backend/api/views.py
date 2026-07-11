@@ -3,7 +3,7 @@ from datetime import time as time_obj, timedelta
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.contrib.auth import authenticate
-import resend
+from django.core.mail import send_mail
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import AllowAny
@@ -361,16 +361,16 @@ def employees_view(request):
     )
 
     try:
-        resend.api_key = os.getenv('RESEND_API_KEY')
-        resp = resend.Emails.send({
-            'from': f'SpesAttendance <{os.getenv("EMAIL_HOST_USER")}>',
-            'to': [email],
-            'subject': 'SpesAttendance - Account Created',
-            'text': f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
-        })
-        print(f"Resend success: {resp}")
+        send_mail(
+            subject='SpesAttendance - Account Created',
+            message=f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
+            from_email=os.getenv('DEFAULT_FROM_EMAIL'),
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        print(f"Email sent to {email}")
     except Exception as e:
-        print(f"Resend error: {e}")
+        print(f"Email error: {e}")
 
     result = _serialize_user(user)
     result['temp_password'] = temp_password
@@ -507,16 +507,16 @@ def forgot_password_view(request):
     user.save()
 
     try:
-        resend.api_key = os.getenv('RESEND_API_KEY')
-        resp = resend.Emails.send({
-            'from': f'SpesAttendance <{os.getenv("EMAIL_HOST_USER")}>',
-            'to': [email],
-            'subject': 'SpesAttendance - Password Reset',
-            'text': f"Hello {user.firstname},\n\nYour password has been reset.\n\nEmail: {email}\nNew Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team",
-        })
-        print(f"Resend success: {resp}")
+        send_mail(
+            subject='SpesAttendance - Password Reset',
+            message=f"Hello {user.firstname},\n\nYour password has been reset.\n\nEmail: {email}\nNew Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team",
+            from_email=os.getenv('DEFAULT_FROM_EMAIL'),
+            recipient_list=[email],
+            fail_silently=False,
+        )
+        print(f"Reset email sent to {email}")
     except Exception as e:
-        print(f"Resend error: {e}")
+        print(f"Email error: {e}")
         return Response({'message': 'Failed to send email. Check Render logs.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'message': 'Check your email for the new password.'})

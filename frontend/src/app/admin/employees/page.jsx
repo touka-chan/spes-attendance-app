@@ -32,7 +32,12 @@ export default function EmployeesPage() {
       if (editId) {
         await updateEmployee(editId, form);
       } else {
-        await createEmployee(form);
+        const res = await createEmployee(form);
+        if (res.temp_password) {
+          alert(`Employee created!\n\nEmail: ${res.email}\nID No.: ${res.id_no}\nTemporary Password: ${res.temp_password}\n\nPlease share these credentials with the employee.`);
+        } else {
+          alert('Employee created successfully!');
+        }
       }
       setShowForm(false);
       fetchEmployees();

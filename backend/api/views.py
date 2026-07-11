@@ -229,7 +229,6 @@ def login_view(request):
     })
 
 
-})
 
 
 @api_view(['POST'])

@@ -365,7 +365,7 @@ def employees_view(request):
             message=f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
             from_email=None,
             recipient_list=[email],
-            fail_silently=False,
+            fail_silently=True,
         )
     except Exception:
         pass

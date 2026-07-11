@@ -16,11 +16,11 @@ async function request(endpoint, options = {}) {
 
   if (res.status === 204) return null;
 
+  const text = await res.text();
   let data;
   try {
-    data = await res.json();
+    data = JSON.parse(text);
   } catch (parseErr) {
-    const text = await res.text();
     throw new Error(`Status ${res.status}: ${text.slice(0, 200)}`);
   }
 

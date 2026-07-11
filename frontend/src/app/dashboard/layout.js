@@ -16,18 +16,18 @@ export default function DashboardLayout({ children }) {
   useEffect(() => {
     const auth = localStorage.getItem('spesAuth');
     if (!auth) {
-      router.push('/');
+      window.location.href = '/';
     } else {
       try {
         const user = JSON.parse(auth);
         if (user.role !== 'user') {
-          router.push('/');
+          window.location.href = '/';
         } else {
           setAuthed(true);
           setUserName((user.name || 'Alex').split(' ')[0]);
         }
       } catch {
-        router.push('/');
+        window.location.href = '/';
       }
     }
   }, []);
@@ -39,7 +39,7 @@ export default function DashboardLayout({ children }) {
     localStorage.removeItem('spesAuth');
     localStorage.removeItem('spesToken');
     localStorage.removeItem('attendanceClock');
-    router.push('/');
+    window.location.href = '/';
   };
 
   const getInitials = (name) => {

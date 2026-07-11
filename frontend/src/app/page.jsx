@@ -1,6 +1,5 @@
 "use client";
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useRef } from 'react';
 import styles from './login.module.css';
 import Image from 'next/image';
 import { authenticateUser } from './lib/users';
@@ -15,15 +14,15 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSending, setForgotSending] = useState(false);
-  const router = useRouter();
+  const emailRef = useRef();
+  const passwordRef = useRef();
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
+  const handleLogin = async () => {
     setError('');
     setLoading(true);
 
-    const email = e.target.email.value;
-    const password = e.target.password.value;
+    const email = emailRef.current.value;
+    const password = passwordRef.current.value;
 
     try {
       const user = await authenticateUser(email, password);
@@ -43,15 +42,16 @@ export default function Login() {
         loginTime: new Date().toISOString(),
       }));
 
-      if (user.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
+      const dest = user.role === 'admin' ? '/admin' : '/dashboard';
+      window.location.href = dest;
     } catch {
       setError('Connection error. Make sure the server is running.');
       setLoading(false);
     }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter') handleLogin();
   };
 
   return (
@@ -70,13 +70,13 @@ export default function Login() {
             <p>Spes Attendance Management System</p>
           </div>
 
-          <form className={styles.form} onSubmit={handleLogin}>
+          <div className={styles.form}>
             {error && <div className={styles.error}>{error}</div>}
 
             <div className={styles.inputGroup}>
               <div className={styles.inputWrapper}>
                 <span className="material-symbols-outlined">mail</span>
-                <input type="email" name="email" placeholder="Email Address" required />
+                <input type="email" ref={emailRef} placeholder="Email Address" onKeyDown={handleKeyDown} />
               </div>
             </div>
 
@@ -85,9 +85,9 @@ export default function Login() {
                 <span className="material-symbols-outlined">lock</span>
                 <input
                   type={passwordVisible ? "text" : "password"}
-                  name="password"
+                  ref={passwordRef}
                   placeholder="••••••••••••"
-                  required
+                  onKeyDown={handleKeyDown}
                 />
                 <button
                   type="button"
@@ -101,10 +101,10 @@ export default function Login() {
               </div>
             </div>
             <a href="#" className={styles.forgotPassword} onClick={e => { e.preventDefault(); setShowForgot(true); setForgotEmail(''); setForgotMsg(''); setForgotError(''); }}>Forgot Password?</a>
-            <button type="submit" className={styles.submitBtn} disabled={loading}>
+            <button type="button" className={styles.submitBtn} onClick={handleLogin} disabled={loading}>
               {loading ? 'LOGGING IN...' : 'LOGIN'}
             </button>
-          </form>
+          </div>
 
           <div className={styles.footerLinks}>
             <p style={{ fontSize: 12, color: '#666', margin: 0 }}>

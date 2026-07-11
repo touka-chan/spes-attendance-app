@@ -511,45 +511,7 @@ def forgot_password_view(request):
         user = User.objects.get(email=email)
     except User.DoesNotExist:
         # Don't reveal if email exists
-return Response({'message': 'If the email exists, a reset link will be sent.'})
-
-
-# ---------- Reset Password ----------
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def reset_password_view(request):
-    token = request.data.get('token')
-    new_password = request.data.get('new_password')
-    confirm_password = request.data.get('confirm_password')
-
-    if not token or not new_password or not confirm_password:
-        return Response({'message': 'Token, new password, and confirm password are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if new_password != confirm_password:
-        return Response({'message': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if len(new_password) < 8:
-        return Response({'message': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    try:
-        reset_token = PasswordResetToken.objects.get(token=token, used=False)
-    except PasswordResetToken.DoesNotExist:
-        return Response({'message': 'Invalid or expired reset token.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    if reset_token.is_expired():
-        return Response({'message': 'Reset token has expired.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Reset password
-    user = reset_token.user
-    user.set_password(new_password)
-    user.save()
-
-    # Mark token as used
-    reset_token.used = True
-    reset_token.save()
-
-    return Response({'message': 'Password reset successful. You can now login.'})
+        return Response({'message': 'If the email exists, a reset link will be sent.'})
 
     # Delete old unused tokens for this user
     PasswordResetToken.objects.filter(user=user, used=False).delete()
@@ -587,3 +549,41 @@ def reset_password_view(request):
         return Response({'message': 'Failed to send email. Check Render logs.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     return Response({'message': 'If the email exists, a reset link will be sent.'})
+
+
+# ---------- Reset Password ----------
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password_view(request):
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
+    confirm_password = request.data.get('confirm_password')
+
+    if not token or not new_password or not confirm_password:
+        return Response({'message': 'Token, new password, and confirm password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if new_password != confirm_password:
+        return Response({'message': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 8:
+        return Response({'message': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        reset_token = PasswordResetToken.objects.get(token=token, used=False)
+    except PasswordResetToken.DoesNotExist:
+        return Response({'message': 'Invalid or expired reset token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not reset_token.is_valid():
+        return Response({'message': 'Reset token has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Reset password
+    user = reset_token.user
+    user.set_password(new_password)
+    user.save()
+
+    # Mark token as used
+    reset_token.used = True
+    reset_token.save()
+
+    return Response({'message': 'Password reset successful. You can now login.'})

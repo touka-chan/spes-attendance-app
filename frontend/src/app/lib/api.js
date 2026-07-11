@@ -80,6 +80,13 @@ export function forgotPassword(email) {
   });
 }
 
+export function resetPassword(token, newPassword, confirmPassword) {
+  return request('/reset-password/', {
+    method: 'POST',
+    body: JSON.stringify({ token, new_password: newPassword, confirm_password: confirmPassword }),
+  });
+}
+
 export function updateSettings(data) {
   return request('/admin/settings/', {
     method: 'POST',

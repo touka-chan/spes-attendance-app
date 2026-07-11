@@ -1,6 +1,7 @@
 import os
 import secrets
 import requests
+import pyotp
 from datetime import time as time_obj, timedelta
 from django.utils import timezone
 from django.utils.crypto import get_random_string
@@ -12,6 +13,44 @@ from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from .models import User, Attendance, AttendanceSettings, PasswordResetToken
+
+
+def verify_captcha(token, secret_key):
+    """Verify hCaptcha/Turnstile token."""
+    if not token or not secret_key:
+        return False
+    try:
+        response = requests.post(
+            'https://challenges.cloudflare.com/turnstile/v0/siteverify',
+            data={'secret': secret_key, 'response': token},
+            timeout=5
+        )
+        result = response.json()
+        return result.get('success', False)
+    except Exception:
+        return False
+
+
+def verify_totp(secret, code):
+    """Verify TOTP code."""
+    if not secret or not code:
+        return False
+    try:
+        totp = pyotp.TOTP(secret)
+        return totp.verify(code, valid_window=1)
+    except Exception:
+        return False
+
+
+def generate_totp_secret():
+    """Generate a new TOTP secret."""
+    return pyotp.random_base32()
+
+
+def get_totp_uri(secret, email, issuer='SpesAttendance'):
+    """Get TOTP URI for QR code."""
+    totp = pyotp.TOTP(secret)
+    return totp.provisioning_uri(name=email, issuer_name=issuer)
 
 
 def _get_settings():
@@ -84,10 +123,86 @@ def _time_str(t):
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
+    captcha_token = request.data.get('captcha_token')  # hCaptcha/turnstile token
+    totp_code = request.data.get('totp_code')  # TOTP code for 2FA
 
     user = authenticate(email=email, password=password)
+
+    # Check if user exists (even if password is wrong) for lockout tracking
+    try:
+        user_obj = User.objects.get(email=email)
+    except User.DoesNotExist:
+        user_obj = None
+
+    # If user exists but authentication failed
+    if user_obj and not user:
+        user_obj.increment_failed_attempt()
+        
+        # Check if locked out
+        if user_obj.is_locked():
+            from django.utils import timezone
+            lockout_minutes = int((user_obj.lockout_until - timezone.now()).total_seconds() / 60)
+            return Response({
+                'message': f'Account locked due to multiple failed attempts. Try again in {lockout_minutes} minutes.',
+                'locked': True,
+                'lockout_minutes': lockout_minutes,
+                'require_captcha': user_obj.require_captcha,
+            }, status=status.HTTP_423_LOCKED)
+        
+        # Check if CAPTCHA required
+        if user_obj.require_captcha:
+            return Response({
+                'message': 'Too many failed attempts. Please complete CAPTCHA verification.',
+                'require_captcha': True,
+                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),  # hCaptcha/Turnstile site key
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
     if not user:
         return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    # Check if account is locked (even with correct password)
+    if user.is_locked():
+        from django.utils import timezone
+        lockout_minutes = int((user.lockout_until - timezone.now()).total_seconds() / 60)
+        return Response({
+            'message': f'Account locked due to multiple failed attempts. Try again in {lockout_minutes} minutes.',
+            'locked': True,
+            'lockout_minutes': lockout_minutes,
+            'require_captcha': user.require_captcha,
+        }, status=status.HTTP_423_LOCKED)
+
+    # Verify CAPTCHA if required
+    if user.require_captcha:
+        if not captcha_token:
+            return Response({
+                'message': 'CAPTCHA verification required.',
+                'require_captcha': True,
+                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Verify CAPTCHA (hCaptcha/Turnstile)
+        captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+        if not verify_captcha(captcha_token, captcha_secret):
+            return Response({'message': 'CAPTCHA verification failed. Please try again.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Mark CAPTCHA as verified
+        user.verify_captcha()
+
+    # Check 2FA if enabled
+    if user.two_fa_enabled:
+        if not totp_code:
+            return Response({
+                'message': 'Two-factor authentication required.',
+                'require_2fa': True,
+            }, status=status.HTTP_200_OK)
+        
+        if not verify_totp(user.two_fa_secret, totp_code):
+            return Response({'message': 'Invalid 2FA code.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Successful login - reset failed attempts
+    user.reset_failed_attempts()
 
     token, _ = Token.objects.get_or_create(user=user)
 
@@ -110,6 +225,142 @@ def login_view(request):
             'role': user.role,
         },
     })
+
+
+})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def check_security_requirements(request):
+    """Check if CAPTCHA or 2FA is required for the given email.
+    Called when user visits login page to show appropriate challenge."""
+    email = request.data.get('email')
+    if not email:
+        return Response({'require_captcha': False, 'require_2fa': False})
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'require_captcha': False, 'require_2fa': False})
+
+    # Check if account is locked
+    if user.is_locked():
+        from django.utils import timezone
+        lockout_minutes = int((user.lockout_until - timezone.now()).total_seconds() / 60)
+        return Response({
+            'locked': True,
+            'lockout_minutes': lockout_minutes,
+            'require_captcha': True,
+            'require_2fa': user.two_fa_enabled,
+        })
+
+    return Response({
+        'require_captcha': user.require_captcha,
+        'require_2fa': user.two_fa_enabled,
+        'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_captcha(request):
+    """Verify CAPTCHA token."""
+    email = request.data.get('email')
+    captcha_token = request.data.get('captcha_token')
+    
+    if not email or not captcha_token:
+        return Response({'message': 'Email and CAPTCHA token required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not user.require_captcha:
+        return Response({'message': 'CAPTCHA not required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+    if not verify_captcha(captcha_token, captcha_secret):
+        return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.verify_captcha()
+    return Response({'message': 'CAPTCHA verified successfully'})
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def setup_2fa(request):
+    """Generate 2FA secret and QR code for user."""
+    email = request.data.get('email')
+    if not email:
+        return Response({'message': 'Email required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Generate secret
+    secret = pyotp.random_base32()
+    user.two_fa_secret = secret
+    user.save(update_fields=['two_fa_secret'])
+
+    # Generate provisioning URI for QR code
+    totp = pyotp.TOTP(secret)
+    provisioning_uri = totp.provisioning_uri(email, issuer_name='SpesAttendance')
+
+    return Response({
+        'secret': secret,
+        'provisioning_uri': provisioning_uri,
+    })
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def verify_2fa_setup(request):
+    """Verify 2FA code during setup to enable it."""
+    email = request.data.get('email')
+    totp_code = request.data.get('totp_code')
+
+    if not email or not totp_code:
+        return Response({'message': 'Email and code required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if not user.two_fa_secret:
+        return Response({'message': '2FA not set up'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if verify_totp(user.two_fa_secret, totp_code):
+        user.two_fa_enabled = True
+        user.save(update_fields=['two_fa_enabled'])
+        return Response({'message': '2FA enabled successfully'})
+    else:
+        return Response({'message': 'Invalid code'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def disable_2fa(request):
+    """Disable 2FA for user."""
+    email = request.data.get('email')
+    password = request.data.get('password')
+
+    if not email or not password:
+        return Response({'message': 'Email and password required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    user = authenticate(email=email, password=password)
+    if not user:
+        return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    user.two_fa_enabled = False
+    user.two_fa_secret = ''
+    user.save(update_fields=['two_fa_enabled', 'two_fa_secret'])
+
+    return Response({'message': '2FA disabled successfully'})
 
 
 @api_view(['POST'])

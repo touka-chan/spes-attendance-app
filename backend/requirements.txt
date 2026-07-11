@@ -6,3 +6,4 @@ gunicorn>=20.0
 dj-database-url>=3.0
 psycopg2-binary>=2.9
 requests>=2.31
+pyotp>=2.9

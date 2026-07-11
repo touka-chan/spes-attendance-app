@@ -1,9 +1,10 @@
 "use client";
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from './login.module.css';
 import Image from 'next/image';
-import { authenticateUser } from './lib/users';
+import { authenticateUser, checkLoginRequirements } from './lib/users';
 import { forgotPassword } from './lib/api';
+import { CaptchaChallenge, TwoFAChallenge } from './lib/SecurityChallenge';
 
 export default function Login() {
   const [passwordVisible, setPasswordVisible] = useState(false);
@@ -14,8 +15,43 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSending, setForgotSending] = useState(false);
+  const [captchaRequired, setCaptchaRequired] = useState(false);
+  const [twoFARequired, setTwoFARequired] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
+  const [totpCode, setTotpCode] = useState('');
+  const [siteKey, setSiteKey] = useState('');
+  const [locked, setLocked] = useState(false);
+  const [lockoutMinutes, setLockoutMinutes] = useState(0);
+  const [checkingRequirements, setCheckingRequirements] = useState(true);
+
   const emailRef = useRef();
   const passwordRef = useRef();
+
+  // Check security requirements on page load
+  useEffect(() => {
+    checkRequirements();
+  }, []);
+
+  const checkRequirements = async () => {
+    const email = emailRef.current?.value || '';
+    if (!email) {
+      setCheckingRequirements(false);
+      return;
+    }
+
+    try {
+      const reqs = await checkLoginRequirements(email);
+      setCaptchaRequired(reqs.requireCaptcha);
+      setTwoFARequired(reqs.require2fa);
+      setSiteKey(reqs.siteKey || '');
+      setLocked(reqs.locked || false);
+      setLockoutMinutes(reqs.lockoutMinutes || 0);
+    } catch (err) {
+      console.error('Failed to check login requirements:', err);
+    } finally {
+      setCheckingRequirements(false);
+    }
+  };
 
   const handleLogin = async () => {
     setError('');
@@ -25,36 +61,106 @@ export default function Login() {
     const password = passwordRef.current.value;
 
     try {
-      const user = await authenticateUser(email, password);
+      const result = await authenticateUser(email, password, captchaToken || null, totpCode || null);
 
-      if (!user) {
-        setError('Invalid email or password');
+      if (result.error) {
+        const data = result.error;
+        
+        // Handle lockout
+        if (data.locked) {
+          setLocked(true);
+          setLockoutMinutes(data.lockoutMinutes || 0);
+          setCaptchaRequired(data.requireCaptcha || false);
+          setError(data.message || 'Account locked');
+          setLoading(false);
+          return;
+        }
+
+        // Handle CAPTCHA requirement
+        if (data.requireCaptcha) {
+          setCaptchaRequired(true);
+          setSiteKey(data.siteKey || '');
+          setError(data.message || 'CAPTCHA required');
+          setLoading(false);
+          return;
+        }
+
+        // Handle 2FA requirement
+        if (data.require2fa) {
+          setTwoFARequired(true);
+          setError(data.message || '2FA required');
+          setLoading(false);
+          return;
+        }
+
+        setError(data.message || 'Invalid credentials');
         setLoading(false);
         return;
       }
 
+      // Success
       localStorage.removeItem('attendanceClock');
-      localStorage.setItem('spesToken', user.token);
+      localStorage.setItem('spesToken', result.token);
       localStorage.setItem('spesAuth', JSON.stringify({
-        role: user.role,
-        name: user.name,
-        email: user.email,
+        role: result.role,
+        name: result.name,
+        email: result.email,
         loginTime: new Date().toISOString(),
-        expiresIn: user.expiresIn,
-        expiresAt: user.expiresAt,
+        expiresIn: result.expiresIn,
+        expiresAt: result.expiresAt,
       }));
 
-      const dest = user.role === 'admin' ? '/admin' : '/dashboard';
+      const dest = result.role === 'admin' ? '/admin' : '/dashboard';
       window.location.href = dest;
-    } catch {
+    } catch (err) {
       setError('Connection error. Make sure the server is running.');
       setLoading(false);
     }
   };
 
+  const handleCaptchaSuccess = (token) => {
+    setCaptchaToken(token);
+    setCaptchaRequired(false);
+    setError('');
+    // Auto-submit after CAPTCHA success
+    setTimeout(handleLogin, 100);
+  };
+
+  const handleCaptchaError = (err) => {
+    setError(err);
+    setCaptchaToken('');
+  };
+
+  const handle2FASuccess = () => {
+    setTwoFARequired(false);
+    setError('');
+    handleLogin();
+  };
+
+  const handle2FAError = (err) => {
+    setError(err);
+    setTotpCode('');
+  };
+
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') handleLogin();
   };
+
+  const handleForgotSubmit = async () => {
+    setForgotSending(true);
+    setForgotMsg('');
+    setForgotError('');
+    try {
+      const res = await forgotPassword(forgotEmail);
+      setForgotMsg(res.message);
+    } catch (e) {
+      setForgotError(e.message);
+    }
+    setForgotSending(false);
+  };
+
+  // Disable login button if checking requirements
+  const disableLogin = loading || checkingRequirements || (captchaRequired && !captchaToken) || (twoFARequired && !totpCode);
 
   return (
     <div className={styles.splitLayout}>
@@ -73,12 +179,19 @@ export default function Login() {
           </div>
 
           <div className={styles.form}>
-            {error && <div className={styles.error}>{error}</div>}
+            {locked && (
+              <div className={styles.error} style={{ background: '#fff3cd', color: '#856404', border: '1px solid #ffc107' }}>
+                <span className="material-symbols-outlined" style={{ verticalAlign: 'middle', marginRight: '8px' }}>lock</span>
+                Account locked due to multiple failed attempts. Try again in {lockoutMinutes} minute{lockoutMinutes !== 1 ? 's' : ''}.
+              </div>
+            )}
+
+            {error && !locked && <div className={styles.error}>{error}</div>}
 
             <div className={styles.inputGroup}>
               <div className={styles.inputWrapper}>
                 <span className="material-symbols-outlined">mail</span>
-                <input type="email" ref={emailRef} placeholder="Email Address" onKeyDown={handleKeyDown} />
+                <input type="email" ref={emailRef} placeholder="Email Address" onKeyDown={handleKeyDown} onBlur={checkRequirements} />
               </div>
             </div>
 
@@ -102,8 +215,28 @@ export default function Login() {
                 </button>
               </div>
             </div>
+
+            {/* CAPTCHA Challenge */}
+            {captchaRequired && siteKey && (
+              <CaptchaChallenge
+                email={emailRef.current?.value}
+                siteKey={siteKey}
+                onSuccess={(token) => handleCaptchaSuccess(token)}
+                onError={(err) => handleCaptchaError(err)}
+              />
+            )}
+
+            {/* 2FA Challenge */}
+            {twoFARequired && (
+              <TwoFAChallenge
+                email={emailRef.current?.value}
+                onSuccess={handle2FASuccess}
+                onError={handle2FAError}
+              />
+            )}
+
             <a href="#" className={styles.forgotPassword} onClick={e => { e.preventDefault(); setShowForgot(true); setForgotEmail(''); setForgotMsg(''); setForgotError(''); }}>Forgot Password?</a>
-            <button type="button" className={styles.submitBtn} onClick={handleLogin} disabled={loading}>
+            <button type="button" className={styles.submitBtn} onClick={handleLogin} disabled={disableLogin}>
               {loading ? 'LOGGING IN...' : 'LOGIN'}
             </button>
           </div>
@@ -142,18 +275,7 @@ export default function Login() {
                 style={{ padding: '10px 20px', borderRadius: 8, border: '1px solid var(--outline-variant)', background: 'white', cursor: 'pointer', fontFamily: 'inherit' }}>
                 Cancel
               </button>
-              <button onClick={async () => {
-                setForgotSending(true);
-                setForgotMsg('');
-                setForgotError('');
-                try {
-                  const res = await forgotPassword(forgotEmail);
-                  setForgotMsg(res.message);
-                } catch (e) {
-                  setForgotError(e.message);
-                }
-                setForgotSending(false);
-              }} disabled={forgotSending}
+              <button onClick={handleForgotSubmit} disabled={forgotSending}
                 style={{
                   padding: '10px 20px', borderRadius: 8, border: 'none', background: 'var(--primary)',
                   color: 'white', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600,

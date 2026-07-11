@@ -32,7 +32,7 @@ export default function DashboardLayout({ children }) {
   }, []);
 
   const handleLogout = async () => {
-    try { await fetch('http://localhost:8000/api/logout/', { method: 'POST', headers: { 'Authorization': `Token ${localStorage.getItem('spesToken')}`, 'Accept': 'application/json' } }); } catch {}
+    try { await fetch('https://spes-attendance-app.onrender.com/api/logout/', { method: 'POST', headers: { 'Authorization': `Token ${localStorage.getItem('spesToken')}`, 'Accept': 'application/json' } }); } catch {}
     localStorage.removeItem('spesAuth');
     localStorage.removeItem('spesToken');
     localStorage.removeItem('attendanceClock');

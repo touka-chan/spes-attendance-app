@@ -511,7 +511,45 @@ def forgot_password_view(request):
         user = User.objects.get(email=email)
     except User.DoesNotExist:
         # Don't reveal if email exists
-        return Response({'message': 'If the email exists, a reset link will be sent.'})
+return Response({'message': 'If the email exists, a reset link will be sent.'})
+
+
+# ---------- Reset Password ----------
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password_view(request):
+    token = request.data.get('token')
+    new_password = request.data.get('new_password')
+    confirm_password = request.data.get('confirm_password')
+
+    if not token or not new_password or not confirm_password:
+        return Response({'message': 'Token, new password, and confirm password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if new_password != confirm_password:
+        return Response({'message': 'Passwords do not match.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(new_password) < 8:
+        return Response({'message': 'Password must be at least 8 characters.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        reset_token = PasswordResetToken.objects.get(token=token, used=False)
+    except PasswordResetToken.DoesNotExist:
+        return Response({'message': 'Invalid or expired reset token.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if reset_token.is_expired():
+        return Response({'message': 'Reset token has expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    # Reset password
+    user = reset_token.user
+    user.set_password(new_password)
+    user.save()
+
+    # Mark token as used
+    reset_token.used = True
+    reset_token.save()
+
+    return Response({'message': 'Password reset successful. You can now login.'})
 
     # Delete old unused tokens for this user
     PasswordResetToken.objects.filter(user=user, used=False).delete()
@@ -521,18 +559,29 @@ def forgot_password_view(request):
     expires_at = timezone.now() + timedelta(hours=1)
     PasswordResetToken.objects.create(user=user, token=token, expires_at=expires_at)
 
-    # Send reset link email
+    # Send reset link email via Brevo HTTP API
     reset_url = f"https://spes-attendance.web.app/reset-password?token={token}"
     
     try:
-        send_mail(
-            subject='SpesAttendance - Password Reset',
-            message=f"Hello {user.firstname},\n\nClick the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\n- SpesAttendance Team",
-            from_email=os.getenv('DEFAULT_FROM_EMAIL'),
-            recipient_list=[email],
-            fail_silently=False,
-        )
-        print(f"Reset email sent to {email}")
+        brevo_key = os.getenv('BREVO_API_KEY')
+        if brevo_key:
+            resp = requests.post(
+                'https://api.brevo.com/v3/smtp/email',
+                headers={
+                    'api-key': brevo_key,
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'sender': {'email': os.getenv('DEFAULT_FROM_EMAIL'), 'name': 'SpesAttendance'},
+                    'to': [{'email': email}],
+                    'subject': 'SpesAttendance - Password Reset',
+                    'textContent': f"Hello {user.firstname},\n\nClick the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\n- SpesAttendance Team",
+                },
+                timeout=10,
+            )
+            print(f"Brevo reset email status: {resp.status_code}")
+        else:
+            print("BREVO_API_KEY not set")
     except Exception as e:
         print(f"Email error: {e}")
         return Response({'message': 'Failed to send email. Check Render logs.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

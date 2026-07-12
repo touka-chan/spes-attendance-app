@@ -88,22 +88,16 @@ export default function ChallengePageContent() {
     }
   };
 
-  if (loading) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.card}>
-          <div className={styles.spinnerContainer}>
+  return (
+    <div className={styles.container}>
+      <div className={styles.card} style={{ position: 'relative' }}>
+        {loading && (
+          <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderRadius: '12px', zIndex: 10 }}>
             <div className={styles.spinner}></div>
             <p style={{ marginTop: '16px', color: 'var(--secondary)' }}>Verifying...</p>
           </div>
-        </div>
-      </div>
-    );
-  }
+        )}
 
-  return (
-    <div className={styles.container}>
-      <div className={styles.card}>
         <div className={styles.header}>
           <Image src="/speslogo.png" alt="SPES Logo" width={64} height={64} className={styles.logo} />
           <h1>SpesAttendance</h1>

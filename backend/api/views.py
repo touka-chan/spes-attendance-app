@@ -219,12 +219,12 @@ def verify_challenge(request):
         email = request.data.get('email')
         captcha_token = request.data.get('captcha_token')
         totp_code = request.data.get('totp_code')
-        redirect = request.data.get('redirect', '/')
+        redirect = request.data.get('redirect') or request.data.get('redirect_url', '/')
 
         # Handle fresh CAPTCHA verification (no email yet - first visit challenge)
         if not email and captcha_token:
             captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
-            if not verify_captcha(captcha_token, captcha_secret):
+            if not verify_turnstile(captcha_token, captcha_secret):
                 return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
             return Response({'message': 'CAPTCHA verified successfully', 'fresh_verified': True})
 

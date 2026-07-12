@@ -26,6 +26,8 @@ export default function AdminPanel() {
       setClockOutEnabled(res.clock_out_enabled);
     }).catch(() => {});
     getAdminAnalytics().then(setAnalytics).catch(() => {});
+    const interval = setInterval(() => getAdminAnalytics().then(setAnalytics).catch(() => {}), 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleSave = async () => {

@@ -4,6 +4,29 @@ import styles from './dashboard.module.css';
 import { clockIn, clockOut, getHistory, getSettings, getActiveSession } from '../lib/api';
 import { showToast } from '../lib/alerts';
 
+function SkeletonRow() {
+  return (
+    <tr>
+      <td><div className="skeleton skeleton-text" style={{ width: 80 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 60 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 60 }}></div></td>
+      <td><div className="skeleton skeleton-badge"></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 50 }}></div></td>
+    </tr>
+  );
+}
+
+function SkeletonCard() {
+  return (
+    <div className={styles.card} style={{ height: 200 }}>
+      <div className="skeleton skeleton-text-lg" style={{ width: 100, marginBottom: 16 }}></div>
+      <div className="skeleton skeleton-text" style={{ width: 80, marginBottom: 8 }}></div>
+      <div className="skeleton skeleton-text-sm"></div>
+      <div className="skeleton skeleton-btn" style={{ marginTop: 16 }}></div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const [clockedIn, setClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState(null);
@@ -14,6 +37,20 @@ export default function Dashboard() {
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [clocking, setClocking] = useState(false);
+
+  const fetchData = () => {
+    getActiveSession().then(session => {
+      if (session && session.clock_in) {
+        setClockedIn(true);
+        setClockInTime(new Date(session.clock_in));
+      } else {
+        setClockedIn(false);
+        setClockInTime(null);
+      }
+    }).catch(() => {});
+    getSettings().then(setSettings).catch(() => {});
+    getHistory().then(setHistory).catch(() => {});
+  };
 
   useEffect(() => {
     Promise.all([
@@ -28,7 +65,8 @@ export default function Dashboard() {
     ]).finally(() => setLoading(false));
 
     const interval = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(interval);
+    const poll = setInterval(fetchData, 30000);
+    return () => { clearInterval(interval); clearInterval(poll); };
   }, []);
 
   const formatTime = (d) => {
@@ -61,6 +99,7 @@ export default function Dashboard() {
       setClockOutTime(null);
       setError('');
       showToast('success', `Clocked in at ${time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`);
+      fetchData();
     } catch (e) {
       if (e.message.includes('disabled')) setError('Contact your administrator to enable clock-in.');
       else if (e.message.includes('only allowed')) setError(e.message);
@@ -78,6 +117,7 @@ export default function Dashboard() {
       setClockOutTime(time);
       setError('');
       showToast('success', `Clocked out at ${time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`);
+      fetchData();
     } catch (e) {
       if (e.message.includes('disabled')) setError('Contact your administrator to enable clock-out.');
       else if (e.message.includes('only allowed')) setError(e.message);
@@ -89,6 +129,7 @@ export default function Dashboard() {
   return (
     <>
       <div className={styles.col4}>
+        {loading ? <SkeletonCard /> : (
         <div className={`${styles.card} ${styles.clockCard}`}>
           <span className="material-symbols-outlined" style={{ position: 'absolute', bottom: -10, right: -10, opacity: 0.08, fontSize: 100, transform: 'rotate(-15deg)' }}>schedule</span>
           <div className={styles.timer}>{formatTime(clockInTime)}</div>
@@ -127,10 +168,18 @@ export default function Dashboard() {
             </p>
           )}
         </div>
+        )}
       </div>
 
       <div className={styles.col8}>
         <div className={styles.summaryRow}>
+          {loading ? (
+            <>
+              <div className={styles.card}><div className="skeleton skeleton-text-lg" style={{ width: 80 }}></div><div className="skeleton skeleton-text-sm" style={{ width: 60 }}></div></div>
+              <div className={styles.card}><div className="skeleton skeleton-text-lg" style={{ width: 80 }}></div><div className="skeleton skeleton-text-sm" style={{ width: 60 }}></div></div>
+            </>
+          ) : (
+            <>
           <div className={styles.card}>
             <span style={{ fontSize: 12, color: 'var(--secondary)' }}>STATUS</span>
             <h3 style={{ color: clockedIn ? 'var(--success)' : 'var(--secondary)' }}>
@@ -141,6 +190,8 @@ export default function Dashboard() {
             <span style={{ fontSize: 12, color: 'var(--secondary)' }}>SESSION DURATION</span>
             <h3>{getSessionDuration()}</h3>
           </div>
+          </>
+          )}
         </div>
 
         <div className={styles.card} style={{ padding: 0 }}>
@@ -160,7 +211,7 @@ export default function Dashboard() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>Loading history...</td></tr>
+                  Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)
                 ) : history.length === 0 ? (
                   <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No attendance records yet.</td></tr>
                 ) : history.map(item => (

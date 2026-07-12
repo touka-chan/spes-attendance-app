@@ -25,12 +25,32 @@ function downloadCSV(records) {
   URL.revokeObjectURL(url);
 }
 
+function SkeletonRow() {
+  return (
+    <tr>
+      <td><div className="skeleton skeleton-text" style={{ width: 120 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 80 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 100 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 60 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 60 }}></div></td>
+      <td><div className="skeleton skeleton-badge"></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 50 }}></div></td>
+    </tr>
+  );
+}
+
 export default function AttendancePage() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const fetchRecords = () => {
+    request('/admin/attendance/').then(setRecords).catch(() => {});
+  };
+
   useEffect(() => {
     request('/admin/attendance/').then(setRecords).catch(() => {}).finally(() => setLoading(false));
+    const interval = setInterval(fetchRecords, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -63,7 +83,7 @@ export default function AttendancePage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>Loading attendance records...</td></tr>
+                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
               ) : records.length === 0 ? (
                 <tr><td colSpan={7} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No attendance records found.</td></tr>
               ) : records.map(item => (

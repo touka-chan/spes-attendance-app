@@ -4,6 +4,17 @@ import styles from '../admin.module.css';
 import { getEmployees, createEmployee, updateEmployee, deleteEmployee } from '../../lib/api';
 import { showCredentials, showSuccess, showError, showConfirm } from '../../lib/alerts';
 
+function SkeletonRow() {
+  return (
+    <tr>
+      <td><div className="skeleton skeleton-text" style={{ width: 80 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 150 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 180 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 60 }}></div></td>
+    </tr>
+  );
+}
+
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -15,7 +26,6 @@ export default function EmployeesPage() {
   useEffect(() => { fetchEmployees(); }, []);
 
   const fetchEmployees = () => {
-    setLoading(true);
     getEmployees().then(setEmployees).catch(() => {}).finally(() => setLoading(false));
   };
 
@@ -140,7 +150,7 @@ export default function EmployeesPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>Loading employees...</td></tr>
+                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
               ) : employees.length === 0 ? (
                 <tr><td colSpan={4} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No employees found.</td></tr>
               ) : employees.map(emp => (

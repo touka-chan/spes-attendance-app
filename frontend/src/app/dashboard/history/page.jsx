@@ -3,12 +3,26 @@ import { useState, useEffect } from 'react';
 import styles from '../dashboard.module.css';
 import { getHistory } from '../../lib/api';
 
+function SkeletonRow() {
+  return (
+    <tr>
+      <td><div className="skeleton skeleton-text" style={{ width: 100 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 60 }}></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 60 }}></div></td>
+      <td><div className="skeleton skeleton-badge"></div></td>
+      <td><div className="skeleton skeleton-text" style={{ width: 50 }}></div></td>
+    </tr>
+  );
+}
+
 export default function HistoryPage() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     getHistory().then(setRecords).catch(() => {}).finally(() => setLoading(false));
+    const interval = setInterval(() => getHistory().then(setRecords).catch(() => {}), 30000);
+    return () => clearInterval(interval);
   }, []);
 
   return (
@@ -30,7 +44,7 @@ export default function HistoryPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>Loading history...</td></tr>
+                Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} />)
               ) : records.length === 0 ? (
                 <tr><td colSpan={5} style={{ textAlign: 'center', padding: '2rem', color: 'var(--secondary)' }}>No records found.</td></tr>
               ) : records.map(item => (

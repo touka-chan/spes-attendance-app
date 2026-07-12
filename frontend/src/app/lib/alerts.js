@@ -32,7 +32,22 @@ const baseOptions = {
   },
 };
 
+function closeExisting() {
+  if (Swal.isVisible()) Swal.close();
+}
+
+const toast = Swal.mixin({
+  ...baseOptions,
+  toast: true,
+  position: 'top-end',
+  showConfirmButton: false,
+  timer: 3000,
+  timerProgressBar: true,
+  width: 'auto',
+});
+
 export function showSuccess(title, message) {
+  closeExisting();
   return Swal.fire({
     ...baseOptions,
     icon: 'success',
@@ -45,6 +60,7 @@ export function showSuccess(title, message) {
 }
 
 export function showError(title, message) {
+  closeExisting();
   return Swal.fire({
     ...baseOptions,
     icon: 'error',
@@ -55,6 +71,7 @@ export function showError(title, message) {
 }
 
 export function showInfo(title, message) {
+  closeExisting();
   return Swal.fire({
     ...baseOptions,
     icon: 'info',
@@ -65,6 +82,7 @@ export function showInfo(title, message) {
 }
 
 export function showConfirm(title, message, confirmText = 'Yes', cancelText = 'Cancel') {
+  closeExisting();
   return Swal.fire({
     ...baseOptions,
     icon: 'question',
@@ -79,6 +97,7 @@ export function showConfirm(title, message, confirmText = 'Yes', cancelText = 'C
 }
 
 export function showCredentials(email, idNo, password) {
+  closeExisting();
   return Swal.fire({
     ...baseOptions,
     icon: 'success',
@@ -95,19 +114,11 @@ export function showCredentials(email, idNo, password) {
 }
 
 export function showToast(icon, message) {
-  const Toast = Swal.mixin({
-    ...baseOptions,
-    toast: true,
-    position: 'top-end',
-    showConfirmButton: false,
-    timer: 3000,
-    timerProgressBar: true,
-    width: 'auto',
-  });
-  return Toast.fire({ icon, title: message });
+  return toast.fire({ icon, title: message });
 }
 
 export function showSessionExpired(role) {
+  closeExisting();
   const isAdmin = role === 'admin';
   return Swal.fire({
     ...baseOptions,
@@ -127,6 +138,7 @@ export function showSessionExpired(role) {
 }
 
 export function showSessionExpiringSoon(minutesLeft, role) {
+  closeExisting();
   return Swal.fire({
     ...baseOptions,
     icon: 'info',

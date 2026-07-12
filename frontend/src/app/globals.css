@@ -108,39 +108,21 @@ input:focus {
   background-color: var(--outline-variant) !important;
 }
 
-.swal-themed-icon {
-  font-size: 1.6rem !important;
-}
-
+/* ===== Swal2 Icon Sizing — font-size based (scales all em children) ===== */
 .swal2-icon.swal-themed-icon {
-  width: 40px !important;
-  height: 40px !important;
-  margin: 0 auto 8px !important;
+  width: 5em !important;
+  height: 5em !important;
+  font-size: 14px !important;   /* 5em × 14px = 70px (within 60–72) */
+  border-width: 0.25em !important;
+  line-height: 5em !important;
+  margin: 1.5em auto 0.5em !important;
 }
 
-/* Reset Swal2 internal spacing to prevent overlapping */
-.swal-themed-popup .swal2-header,
-.themed-swal-popup .swal2-header {
-  padding: 0 !important;
-  margin: 0 !important;
+.swal2-icon.swal-themed-icon .swal2-icon-content {
+  font-size: 3.75em !important;
 }
 
-.swal-themed-popup .swal2-html-container,
-.themed-swal-popup .swal2-html-container {
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow-y: auto !important;
-  flex: 1 1 auto !important;
-  max-height: 160px !important;
-}
-
-.swal-themed-popup .swal2-actions,
-.themed-swal-popup .swal2-actions {
-  margin: 12px 0 0 !important;
-  padding: 0 !important;
-  flex-shrink: 0 !important;
-}
-
+/* Icon colour overrides */
 .swal-themed-popup .swal2-icon.swal2-success {
   border-color: var(--success) !important;
   color: var(--success) !important;
@@ -164,6 +146,29 @@ input:focus {
 .swal-themed-popup .swal2-icon.swal2-question {
   border-color: var(--primary) !important;
   color: var(--primary) !important;
+}
+
+/* Reset Swal2 internal spacing */
+.swal-themed-popup .swal2-header,
+.themed-swal-popup .swal2-header {
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.swal-themed-popup .swal2-html-container,
+.themed-swal-popup .swal2-html-container {
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow-y: auto !important;
+  flex: 1 1 auto !important;
+  max-height: 160px !important;
+}
+
+.swal-themed-popup .swal2-actions,
+.themed-swal-popup .swal2-actions {
+  margin: 12px 0 0 !important;
+  padding: 0 !important;
+  flex-shrink: 0 !important;
 }
 
 /* Themed Swal for layouts */
@@ -257,12 +262,8 @@ input:focus {
     max-height: 140px !important;
   }
   .swal2-icon.swal-themed-icon {
-    width: 36px !important;
-    height: 36px !important;
-    margin: 0 auto 6px !important;
-  }
-  .swal-themed-icon {
-    font-size: 1.4rem !important;
+    font-size: 12px !important;
+    margin: 1em auto 0.4em !important;
   }
   .swal2-toast.swal-themed-popup {
     max-width: calc(100vw - 24px) !important;

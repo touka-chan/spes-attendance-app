@@ -2,7 +2,7 @@ import os
 import secrets
 import requests
 import pyotp
-from datetime import time as time_obj, timedelta
+from datetime import time as time_obj, timedelta, datetime
 from django.utils import timezone
 from django.utils.crypto import get_random_string
 from django.contrib.auth import authenticate
@@ -436,10 +436,11 @@ def clock_in(request):
     if Attendance.objects.filter(user=request.user, clock_out__isnull=True).exists():
         return Response({'message': 'Already clocked in'}, status=status.HTTP_400_BAD_REQUEST)
 
+    grace_end = (datetime.combine(datetime.today(), s.clock_in_start) + timedelta(minutes=10)).time()
     att = Attendance.objects.create(
         user=request.user,
         clock_in=now,
-        is_late=False,
+        is_late=t > grace_end,
     )
 
     return Response({

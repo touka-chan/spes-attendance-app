@@ -576,10 +576,14 @@
 @media (max-width: 768px) {
   .sidebar {
     transform: translateX(-100%);
+    pointer-events: none;
+    visibility: hidden;
   }
 
   .sidebarOpen {
     transform: translateX(0);
+    pointer-events: auto;
+    visibility: visible;
   }
 
   .sidebarOverlay {

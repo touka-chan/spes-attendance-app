@@ -200,11 +200,11 @@ def verify_captcha(request):
     except User.DoesNotExist:
         return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    if not user.require_captcha:
+if not user.require_captcha:
         return Response({'message': 'CAPTCHA not required'}, status=status.HTTP_400_BAD_REQUEST)
 
-captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
-            if not verify_turnstile(captcha_token, captcha_secret):
+    captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+    if not verify_turnstile(captcha_token, captcha_secret):
         return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
 
     user.verify_captcha()

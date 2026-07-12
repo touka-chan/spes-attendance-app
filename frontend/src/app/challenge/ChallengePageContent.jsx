@@ -88,13 +88,6 @@ export default function ChallengePageContent() {
     }
   }, [turnstileReady, siteKey, type, widgetId]);
 
-  // Reset widget when re-shown (e.g. after error)
-  useEffect(() => {
-    if (widgetId && window.turnstile) {
-      window.turnstile.reset(widgetId);
-    }
-  }, [widgetId, type]);
-
   const handleCaptchaSuccess = async (token) => {
     setLoading(true);
     setError('');
@@ -254,17 +247,9 @@ export default function ChallengePageContent() {
               </p>
             )}
 
-            <button 
-              onClick={() => {
-                if (widgetId && window.turnstile) {
-                  window.turnstile.execute(widgetId);
-                }
-              }}
-              disabled={loading || !widgetId}
-              className={styles.verifyBtn}
-            >
-              {loading ? 'Verifying...' : 'Verify & Continue'}
-            </button>
+            <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '13px', color: 'var(--secondary)' }}>
+              {widgetId ? 'Complete the CAPTCHA above to continue' : ' '}
+            </div>
           </div>
         )}
 

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from 'react';
 import styles from './login.module.css';
 import Image from 'next/image';
-import { authenticateUser, checkLoginRequirements } from './lib/users';
+import { authenticateUser } from './lib/users';
 import { forgotPassword } from './lib/api';
 
 export default function Login() {
@@ -14,71 +14,18 @@ export default function Login() {
   const [forgotMsg, setForgotMsg] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSending, setForgotSending] = useState(false);
-  const [checkingRequirements, setCheckingRequirements] = useState(true);
 
   const emailRef = useRef();
   const passwordRef = useRef();
-  const twoFaVerifiedRef = useRef(null);
 
-  // Check security requirements on page load and email change
+  // On first visit, redirect to challenge page for CAPTCHA verification
   useEffect(() => {
-    // Check if returning from 2FA verification on challenge page
-    const urlParams = new URLSearchParams(window.location.search);
-    const twoFaVerified = urlParams.get('2fa_verified');
-    twoFaVerifiedRef.current = twoFaVerified;
-
-    // Clean URL params to avoid stale state
-    if (twoFaVerified || urlParams.toString()) {
-      window.history.replaceState({}, '', window.location.pathname);
+    const verified = sessionStorage.getItem('captcha_verified');
+    if (!verified) {
+      const params = new URLSearchParams({ type: 'captcha', fresh: '1', redirect: '/' });
+      window.location.href = `/challenge?${params.toString()}`;
     }
-
-    checkRequirements();
   }, []);
-
-  const checkRequirements = async () => {
-    const email = emailRef.current?.value || '';
-    if (!email) {
-      setCheckingRequirements(false);
-      return;
-    }
-
-    try {
-      const reqs = await checkLoginRequirements(email);
-      if (reqs.locked) {
-        const params = new URLSearchParams({
-          type: 'locked',
-          email: email,
-          minutes: reqs.lockout_minutes || 5,
-          redirect: '/'
-        });
-        window.location.href = `/challenge?${params.toString()}`;
-        return;
-      }
-      if (reqs.require_captcha) {
-        const params = new URLSearchParams({
-          type: 'captcha',
-          email: email,
-          site_key: reqs.site_key || '',
-          redirect: '/'
-        });
-        window.location.href = `/challenge?${params.toString()}`;
-        return;
-      }
-      if (reqs.require_2fa) {
-        const params = new URLSearchParams({
-          type: '2fa',
-          email: email,
-          redirect: '/'
-        });
-        window.location.href = `/challenge?${params.toString()}`;
-        return;
-      }
-    } catch (err) {
-      console.error('Failed to check requirements:', err);
-    } finally {
-      setCheckingRequirements(false);
-    }
-  };
 
   const handleLogin = async () => {
     setError('');
@@ -93,52 +40,15 @@ export default function Login() {
       return;
     }
 
-    const twoFaVerifiedFor = twoFaVerifiedRef.current;
-
     try {
-      const result = await authenticateUser(email, password, null, null, twoFaVerifiedFor === email ? email : null);
+      const result = await authenticateUser(email, password);
 
       if (result.error) {
-        const data = result.error;
-
-        if (data.locked) {
-          const params = new URLSearchParams({
-            type: 'locked',
-            email: email,
-            minutes: data.lockout_minutes || data.lockoutMinutes || 5,
-            redirect: '/'
-          });
-          window.location.href = `/challenge?${params.toString()}`;
-          return;
-        }
-
-        if (data.require_captcha || data.requireCaptcha) {
-          const params = new URLSearchParams({
-            type: 'captcha',
-            email: email,
-            site_key: data.site_key || data.siteKey || '',
-            redirect: '/'
-          });
-          window.location.href = `/challenge?${params.toString()}`;
-          return;
-        }
-
-        if (data.require_2fa || data.require2fa) {
-          const params = new URLSearchParams({
-            type: '2fa',
-            email: email,
-            redirect: '/'
-          });
-          window.location.href = `/challenge?${params.toString()}`;
-          return;
-        }
-
-        setError(data.message || 'Invalid email or password');
+        setError(result.error.message || 'Invalid email or password');
         setLoading(false);
         return;
       }
 
-      // Success
       localStorage.removeItem('attendanceClock');
       localStorage.setItem('spesToken', result.token);
       localStorage.setItem('spesAuth', JSON.stringify({
@@ -197,7 +107,7 @@ export default function Login() {
             <div className={styles.inputGroup}>
               <div className={styles.inputWrapper}>
                 <span className="material-symbols-outlined">mail</span>
-                <input type="email" ref={emailRef} placeholder="Email Address" onKeyDown={handleKeyDown} onBlur={() => { if (!checkingRequirements) checkRequirements(); }} />
+                <input type="email" ref={emailRef} placeholder="Email Address" onKeyDown={handleKeyDown} />
               </div>
             </div>
 
@@ -222,7 +132,7 @@ export default function Login() {
               </div>
             </div>
             <a href="#" className={styles.forgotPassword} onClick={e => { e.preventDefault(); setShowForgot(true); setForgotEmail(''); setForgotMsg(''); setForgotError(''); }}>Forgot Password?</a>
-            <button type="button" className={styles.submitBtn} onClick={handleLogin} disabled={loading || checkingRequirements}>
+            <button type="button" className={styles.submitBtn} onClick={handleLogin} disabled={loading}>
               {loading ? 'LOGGING IN...' : 'LOGIN'}
             </button>
           </div>

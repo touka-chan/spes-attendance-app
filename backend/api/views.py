@@ -123,94 +123,11 @@ def _time_str(t):
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
-    captcha_token = request.data.get('captcha_token')
-    totp_code = request.data.get('totp_code')
 
     user = authenticate(email=email, password=password)
 
-    # Check if user exists (even if password is wrong) for lockout tracking
-    try:
-        user_obj = User.objects.get(email=email)
-    except User.DoesNotExist:
-        user_obj = None
-
-    # If user exists but authentication failed
-    if user_obj and not user:
-        user_obj.increment_failed_attempt()
-        
-        # Check if locked out
-        if user_obj.is_locked():
-            from django.utils import timezone
-            lockout_minutes = int((user_obj.lockout_until - timezone.now()).total_seconds() / 60)
-            return Response({
-                'message': f'Account locked. Try again in {lockout_minutes} minutes.',
-                'locked': True,
-                'lockout_minutes': lockout_minutes,
-                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect=/admin&email={email}',
-            }, status=status.HTTP_423_LOCKED)
-        
-        # Check if CAPTCHA required
-        if user_obj.require_captcha:
-            return Response({
-                'message': 'CAPTCHA required',
-                'require_captcha': True,
-                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
-                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect=/admin&email={email}',
-            }, status=status.HTTP_400_BAD_REQUEST)
-
-        return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
     if not user:
         return Response({'message': 'Invalid credentials'}, status=status.HTTP_401_UNAUTHORIZED)
-
-    # Check if account is locked (even with correct password)
-    if user.is_locked():
-        from django.utils import timezone
-        lockout_minutes = int((user.lockout_until - timezone.now()).total_seconds() / 60)
-        redirect = '/admin' if user.role == 'admin' else '/dashboard'
-        return Response({
-            'message': f'Account locked. Try again in {lockout_minutes} minutes.',
-            'locked': True,
-            'lockout_minutes': lockout_minutes,
-            'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}',
-        }, status=status.HTTP_423_LOCKED)
-
-    # Verify CAPTCHA if required
-    if user.require_captcha:
-        if not captcha_token:
-            redirect = '/admin' if user.role == 'admin' else '/dashboard'
-            return Response({
-                'message': 'CAPTCHA verification required',
-                'require_captcha': True,
-                'site_key': os.getenv('CAPTCHA_SITE_KEY', ''),
-                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}',
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verify CAPTCHA
-        captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
-        if not verify_captcha(captcha_token, captcha_secret):
-            return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
-        
-        user.verify_captcha()
-
-    # Check 2FA if enabled
-    if user.two_fa_enabled:
-        totp_verified_for = request.data.get('totp_verified_for', '')
-        # Skip 2FA if already verified via challenge page
-        if totp_verified_for == email:
-            pass
-        elif not totp_code:
-            redirect = '/admin' if user.role == 'admin' else '/dashboard'
-            return Response({
-                'message': '2FA required',
-                'require_2fa': True,
-                'challenge_url': f'https://spes-attendance.web.app/challenge?redirect={redirect}&email={email}&require_2fa=1',
-            }, status=status.HTTP_200_OK)
-        elif not verify_totp(user.two_fa_secret, totp_code):
-            return Response({'message': 'Invalid 2FA code'}, status=status.HTTP_400_BAD_REQUEST)
-
-    # Successful login
-    user.reset_failed_attempts()
 
     token, _ = Token.objects.get_or_create(user=user)
 

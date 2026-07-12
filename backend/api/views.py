@@ -45,6 +45,15 @@ def create_notification(notif_type, title, message, recipient_role='all', recipi
     )
 
 
+def get_sender_email():
+    return (
+        os.getenv('BREVO_FROM_EMAIL')
+        or os.getenv('DEFAULT_FROM_EMAIL')
+        or settings.DEFAULT_FROM_EMAIL
+        or 'noreply@spes-attendance.com'
+    )
+
+
 def verify_totp(secret, code):
     """Verify TOTP code."""
     if not secret or not code:
@@ -647,23 +656,24 @@ def employees_view(request):
     try:
         brevo_key = os.getenv('BREVO_API_KEY')
         if brevo_key:
-            requests.post(
+            sender_email = get_sender_email()
+            resp = requests.post(
                 'https://api.brevo.com/v3/smtp/email',
                 headers={
                     'api-key': brevo_key,
                     'Content-Type': 'application/json',
                 },
                 json={
-                    'sender': {'email': settings.DEFAULT_FROM_EMAIL or 'noreply@spes-attendance.com', 'name': 'SpesAttendance'},
+                    'sender': {'email': sender_email, 'name': 'SpesAttendance'},
                     'to': [{'email': email}],
                     'subject': 'SpesAttendance - Account Created',
                     'textContent': f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
                 },
                 timeout=10,
             )
-            print(f"Brevo email sent to {email}")
+            print(f"Brevo create email status: {resp.status_code} - {resp.text[:200]}")
     except Exception as e:
-        print(f"Brevo email error: {e}")
+        print(f"Brevo create email error: {e}")
 
     result = _serialize_user(user)
     result['temp_password'] = temp_password
@@ -810,6 +820,7 @@ def forgot_password_view(request):
     try:
         brevo_key = os.getenv('BREVO_API_KEY')
         if brevo_key:
+            sender_email = get_sender_email()
             resp = requests.post(
                 'https://api.brevo.com/v3/smtp/email',
                 headers={
@@ -817,14 +828,14 @@ def forgot_password_view(request):
                     'Content-Type': 'application/json',
                 },
                 json={
-                    'sender': {'email': settings.DEFAULT_FROM_EMAIL or 'noreply@spes-attendance.com', 'name': 'SpesAttendance'},
+                    'sender': {'email': sender_email, 'name': 'SpesAttendance'},
                     'to': [{'email': email}],
                     'subject': 'SpesAttendance - Password Reset',
                     'textContent': f"Hello {user.firstname},\n\nClick the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\n- SpesAttendance Team",
                 },
                 timeout=10,
             )
-            print(f"Brevo reset email status: {resp.status_code}")
+            print(f"Brevo reset email status: {resp.status_code} - {resp.text[:200]}")
         else:
             print("BREVO_API_KEY not set")
     except Exception as e:

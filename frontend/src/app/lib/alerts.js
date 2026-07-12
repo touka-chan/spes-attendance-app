@@ -102,12 +102,12 @@ export function showCredentials(email, idNo, password) {
     ...baseOptions,
     icon: 'success',
     title: 'Employee Created!',
-    html: `<div style="text-align:left;font-size:14px;color:var(--on-surface)">
-      <p style="margin:8px 0"><strong>Email:</strong> ${email}</p>
-      <p style="margin:8px 0"><strong>ID No.:</strong> ${idNo}</p>
-      <p style="margin:8px 0"><strong>Password:</strong> <code style="background:var(--background);padding:4px 10px;border-radius:4px;font-size:16px;font-family:monospace">${password}</code></p>
-    </div>
-    <p style="font-size:12px;color:var(--secondary);margin-top:16px">Please share these credentials with the employee.</p>`,
+    html: `<div style="text-align:left;font-size:13px;color:var(--on-surface);line-height:1.5">
+      <p style="margin:4px 0"><strong>Email:</strong> ${email}</p>
+      <p style="margin:4px 0"><strong>ID No.:</strong> ${idNo}</p>
+      <p style="margin:4px 0"><strong>Password:</strong> <code style="background:var(--background);padding:2px 8px;border-radius:4px;font-size:14px;font-family:monospace">${password}</code></p>
+      <p style="font-size:11px;color:var(--secondary);margin:8px 0 0">Share these credentials with the employee.</p>
+    </div>`,
     confirmButtonColor: THEME.primary,
     confirmButtonText: 'Got it',
   });

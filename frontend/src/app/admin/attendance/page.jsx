@@ -93,7 +93,7 @@ export default function AttendancePage() {
                   <td>{new Date(item.clock_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                   <td>{new Date(item.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>
                   <td>{item.clock_out ? new Date(item.clock_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
-                  <td><span className={`${styles.badge} ${item.clock_out ? styles.badgePresent : styles.badgeLate}`}>{item.clock_out ? 'Completed' : 'Clocked In'}</span></td>
+                  <td><span className={`${styles.badge} ${item.clock_out ? (item.is_late ? styles.badgeLate : styles.badgePresent) : (item.is_late ? styles.badgeLate : styles.badgePresent)}`}>{item.clock_out ? (item.is_late ? 'Completed/Late' : 'Completed') : (item.is_late ? 'Late' : 'Clocked In')}</span></td>
                   <td>{item.duration || '--'}</td>
                 </tr>
               ))}

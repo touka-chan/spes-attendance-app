@@ -31,6 +31,7 @@ export default function Dashboard() {
   const [clockedIn, setClockedIn] = useState(false);
   const [clockInTime, setClockInTime] = useState(null);
   const [clockOutTime, setClockOutTime] = useState(null);
+  const [isLate, setIsLate] = useState(false);
   const [history, setHistory] = useState([]);
   const [now, setNow] = useState(new Date());
   const [error, setError] = useState('');
@@ -43,9 +44,11 @@ export default function Dashboard() {
       if (session && session.clock_in) {
         setClockedIn(true);
         setClockInTime(new Date(session.clock_in));
+        setIsLate(session.is_late || false);
       } else {
         setClockedIn(false);
         setClockInTime(null);
+        setIsLate(false);
       }
     }).catch(() => {});
     getSettings().then(setSettings).catch(() => {});
@@ -58,6 +61,7 @@ export default function Dashboard() {
         if (session && session.clock_in) {
           setClockedIn(true);
           setClockInTime(new Date(session.clock_in));
+          setIsLate(session.is_late || false);
         }
       }).catch(() => {}),
       getSettings().then(setSettings).catch(() => {}),
@@ -82,7 +86,7 @@ export default function Dashboard() {
   const getSessionDuration = () => {
     if (!clockInTime) return '00:00:00';
     const end = clockOutTime || now;
-    const diff = Math.floor((end - clockInTime) / 1000);
+    const diff = Math.max(0, Math.floor((end - clockInTime) / 1000));
     const h = Math.floor(diff / 3600).toString().padStart(2, '0');
     const m = Math.floor((diff % 3600) / 60).toString().padStart(2, '0');
     const s = (diff % 60).toString().padStart(2, '0');
@@ -97,6 +101,7 @@ export default function Dashboard() {
       setClockedIn(true);
       setClockInTime(time);
       setClockOutTime(null);
+      setIsLate(res.attendance.is_late || false);
       setError('');
       showToast('success', `Clocked in at ${time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`);
       fetchData();
@@ -207,8 +212,8 @@ export default function Dashboard() {
             <>
           <div className={styles.card}>
             <span style={{ fontSize: 12, color: 'var(--secondary)' }}>STATUS</span>
-            <h3 style={{ color: clockedIn ? 'var(--success)' : 'var(--secondary)' }}>
-              {clockedIn ? 'Clocked In' : clockOutTime ? 'Clocked Out' : 'Not Started'}
+            <h3 style={{ color: clockedIn ? (isLate ? 'var(--error)' : 'var(--success)') : 'var(--secondary)' }}>
+              {clockedIn ? (isLate ? 'Late' : 'Clocked In') : clockOutTime ? (history[0]?.is_late ? 'Completed/Late' : 'Completed') : 'Not Started'}
             </h3>
           </div>
           <div className={styles.card}>
@@ -244,7 +249,7 @@ export default function Dashboard() {
                     <td>{new Date(item.clock_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
                     <td>{new Date(item.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</td>
                     <td>{item.clock_out ? new Date(item.clock_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--'}</td>
-                    <td><span className={`${styles.badge} ${item.clock_out ? styles.badgePresent : styles.badgeLate}`}>{item.clock_out ? 'Completed' : 'Clocked In'}</span></td>
+                    <td><span className={`${styles.badge} ${item.clock_out ? (item.is_late ? styles.badgeLate : styles.badgePresent) : (item.is_late ? styles.badgeLate : styles.badgePresent)}`}>{item.clock_out ? (item.is_late ? 'Completed/Late' : 'Completed') : (item.is_late ? 'Late' : 'Clocked In')}</span></td>
                     <td>{item.duration || '--'}</td>
                   </tr>
                 ))}

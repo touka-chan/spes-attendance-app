@@ -124,6 +124,7 @@ class AttendanceSettings(models.Model):
     clock_out_end = models.TimeField(default='17:20')
     clock_in_enabled = models.BooleanField(default=False)
     clock_out_enabled = models.BooleanField(default=False)
+    grace_minutes = models.PositiveIntegerField(default=10, help_text='Minutes after clock_in_start before marking as late')
     updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
     updated_at = models.DateTimeField(auto_now=True)
 

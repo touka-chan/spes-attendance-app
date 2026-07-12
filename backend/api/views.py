@@ -449,7 +449,7 @@ def clock_in(request):
     if Attendance.objects.filter(user=request.user, clock_out__isnull=True).exists():
         return Response({'message': 'Already clocked in'}, status=status.HTTP_400_BAD_REQUEST)
 
-    grace_end = (datetime.combine(datetime.today(), s.clock_in_start) + timedelta(minutes=10)).time()
+    grace_end = (datetime.combine(datetime.today(), s.clock_in_start) + timedelta(minutes=s.grace_minutes)).time()
     att = Attendance.objects.create(
         user=request.user,
         clock_in=now,
@@ -515,6 +515,7 @@ def active_session_view(request):
         'clock_out_end': _time_str(s.clock_out_end),
         'clock_in_enabled': s.clock_in_enabled,
         'clock_out_enabled': s.clock_out_enabled,
+        'grace_minutes': s.grace_minutes,
     }
 
     active = Attendance.objects.filter(user=request.user, clock_out__isnull=True).first()
@@ -567,6 +568,7 @@ def settings_view(request):
             'clock_out_end': _time_str(s.clock_out_end),
             'clock_in_enabled': s.clock_in_enabled,
             'clock_out_enabled': s.clock_out_enabled,
+            'grace_minutes': s.grace_minutes,
         })
 
     for key in ['clock_in_start', 'clock_in_end', 'clock_out_start', 'clock_out_end']:
@@ -577,6 +579,9 @@ def settings_view(request):
         val = request.data.get(key)
         if val is not None:
             setattr(s, key, bool(val))
+    grace = request.data.get('grace_minutes')
+    if grace is not None:
+        s.grace_minutes = max(0, int(grace))
     s.updated_by = request.user
     s.save()
 
@@ -597,6 +602,7 @@ def settings_view(request):
         'clock_out_end': _time_str(s.clock_out_end),
         'clock_in_enabled': s.clock_in_enabled,
         'clock_out_enabled': s.clock_out_enabled,
+        'grace_minutes': s.grace_minutes,
     })
 
 

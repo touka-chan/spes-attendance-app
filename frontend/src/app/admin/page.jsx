@@ -12,6 +12,7 @@ export default function AdminPanel() {
   const [clockOutEnd, setClockOutEnd] = useState('17:20');
   const [clockInEnabled, setClockInEnabled] = useState(false);
   const [clockOutEnabled, setClockOutEnabled] = useState(false);
+  const [graceMinutes, setGraceMinutes] = useState(10);
   const [saving, setSaving] = useState(false);
   const [analytics, setAnalytics] = useState(null);
 
@@ -24,6 +25,7 @@ export default function AdminPanel() {
       setClockOutEnd(res.clock_out_end);
       setClockInEnabled(res.clock_in_enabled);
       setClockOutEnabled(res.clock_out_enabled);
+      setGraceMinutes(res.grace_minutes || 10);
     }).catch(() => {});
     getAdminAnalytics().then(setAnalytics).catch(() => {});
     const interval = setInterval(() => getAdminAnalytics().then(setAnalytics).catch(() => {}), 30000);
@@ -33,7 +35,7 @@ export default function AdminPanel() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await updateSettings({ clock_in_start: clockInStart, clock_in_end: clockInEnd, clock_out_start: clockOutStart, clock_out_end: clockOutEnd, clock_in_enabled: clockInEnabled, clock_out_enabled: clockOutEnabled });
+      await updateSettings({ clock_in_start: clockInStart, clock_in_end: clockInEnd, clock_out_start: clockOutStart, clock_out_end: clockOutEnd, clock_in_enabled: clockInEnabled, clock_out_enabled: clockOutEnabled, grace_minutes: graceMinutes });
       showToast('success', 'Settings saved');
     } catch (e) {
       showToast('error', e.message);
@@ -127,6 +129,11 @@ export default function AdminPanel() {
                 {clockOutEnabled ? 'ON' : 'OFF'}
               </span>
             </div>
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: 'var(--secondary)', display: 'block', marginBottom: 6 }}>GRACE PERIOD (min)</label>
+            <input type="number" min="0" max="120" value={graceMinutes} onChange={e => setGraceMinutes(Math.max(0, parseInt(e.target.value) || 0))} className={styles.timeInput} style={{ width: 80 }} />
+            <p style={{ fontSize: 11, color: 'var(--secondary)', margin: '6px 0 0 0', fontStyle: 'italic' }}>Minutes after start before marked late</p>
           </div>
           <button onClick={handleSave} disabled={saving} className={styles.btnPrimary} style={{ height: 44, alignSelf: 'flex-end' }}>
             <span className="material-symbols-outlined">save</span>

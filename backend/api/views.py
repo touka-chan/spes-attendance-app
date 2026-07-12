@@ -15,8 +15,8 @@ from rest_framework.authtoken.models import Token
 from .models import User, Attendance, AttendanceSettings, PasswordResetToken
 
 
-def verify_captcha(token, secret_key):
-    """Verify hCaptcha/Turnstile token."""
+def verify_turnstile(token, secret_key):
+    """Verify Turnstile token."""
     if not token or not secret_key:
         return False
     try:
@@ -203,8 +203,8 @@ def verify_captcha(request):
     if not user.require_captcha:
         return Response({'message': 'CAPTCHA not required'}, status=status.HTTP_400_BAD_REQUEST)
 
-    captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
-    if not verify_captcha(captcha_token, captcha_secret):
+captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+            if not verify_turnstile(captcha_token, captcha_secret):
         return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
 
     user.verify_captcha()
@@ -242,7 +242,7 @@ def verify_challenge(request):
                 return Response({'message': 'CAPTCHA token required'}, status=status.HTTP_400_BAD_REQUEST)
 
             captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
-            if not verify_captcha(captcha_token, captcha_secret):
+            if not verify_turnstile(captcha_token, captcha_secret):
                 return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
 
             user.verify_captcha()

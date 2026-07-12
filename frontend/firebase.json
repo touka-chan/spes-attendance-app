@@ -6,6 +6,9 @@
       "**/.*",
       "**/node_modules/**"
     ],
+    "headers": [
+      { "source": "**/*.@(js|css|html)", "headers": [{ "key": "Cache-Control", "value": "no-cache" }] }
+    ],
     "rewrites": [
       { "source": "/admin", "destination": "/admin.html" },
       { "source": "/admin/attendance", "destination": "/admin/attendance.html" },

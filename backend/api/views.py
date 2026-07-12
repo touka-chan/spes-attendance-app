@@ -344,6 +344,7 @@ def verify_challenge(request):
     return Response({
         'message': 'Challenge verified successfully',
         'redirect': redirect,
+        'verified': True,
     })
 
 
@@ -914,3 +915,4 @@ def reset_password_view(request):
     reset_token.save()
 
     return Response({'message': 'Password reset successful. You can now login.'})
+

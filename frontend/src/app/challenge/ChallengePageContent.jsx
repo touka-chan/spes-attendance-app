@@ -103,15 +103,18 @@ export default function ChallengePageContent() {
         }),
       });
 
-      const data = await res.json();
+      let data;
+      try {
+        data = await res.json();
+      } catch {
+        throw new Error('Server error (unexpected response). Please refresh and try again.');
+      }
 
       if (res.ok) {
         if (isFresh) {
-          // Fresh visit: store in sessionStorage, redirect to login
           sessionStorage.setItem('captcha_verified', 'true');
           window.location.href = redirectUrl;
         } else if (email && !isFresh) {
-          // Known user: CAPTCHA/2FA verified, redirect to login
           const searchParams = new URLSearchParams(window.location.search);
           const type = searchParams.get('type');
           let dest = redirectUrl;
@@ -128,11 +131,7 @@ export default function ChallengePageContent() {
         throw new Error(data.message || 'Verification failed');
       }
     } catch (err) {
-      setError(err.message);
-      // Reset widget
-      if (widgetId && window.turnstile) {
-        window.turnstile.reset(widgetId);
-      }
+      setError(err.message || 'Verification failed. Please refresh and try again.');
     } finally {
       setLoading(false);
     }

@@ -33,6 +33,33 @@ def verify_turnstile(token, secret_key):
         return False
 
 
+def send_email(subject, text_content, to_email):
+    """Send email via SendGrid HTTP API."""
+    sg_key = os.getenv('SENDGRID_API_KEY')
+    if not sg_key:
+        print("SENDGRID_API_KEY not set")
+        return
+    sender = os.getenv('SENDGRID_FROM_EMAIL') or os.getenv('DEFAULT_FROM_EMAIL') or 'spesattendance@example.com'
+    try:
+        resp = requests.post(
+            'https://api.sendgrid.com/v3/mail/send',
+            headers={
+                'Authorization': f'Bearer {sg_key}',
+                'Content-Type': 'application/json',
+            },
+            json={
+                'personalizations': [{'to': [{'email': to_email}]}],
+                'from': {'email': sender, 'name': 'SpesAttendance'},
+                'subject': subject,
+                'content': [{'type': 'text/plain', 'value': text_content}],
+            },
+            timeout=10,
+        )
+        print(f"SendGrid email status: {resp.status_code} - {resp.text[:200]}")
+    except Exception as e:
+        print(f"SendGrid email error: {e}")
+
+
 def create_notification(notif_type, title, message, recipient_role='all', recipient=None, related_user=None):
     """Create a notification for users."""
     Notification.objects.create(
@@ -45,13 +72,7 @@ def create_notification(notif_type, title, message, recipient_role='all', recipi
     )
 
 
-def get_sender_email():
-    return (
-        os.getenv('BREVO_FROM_EMAIL')
-        or os.getenv('DEFAULT_FROM_EMAIL')
-        or settings.DEFAULT_FROM_EMAIL
-        or 'noreply@spes-attendance.com'
-    )
+
 
 
 def verify_totp(secret, code):
@@ -653,27 +674,11 @@ def employees_view(request):
         role='user',
     )
 
-    try:
-        brevo_key = os.getenv('BREVO_API_KEY')
-        if brevo_key:
-            sender_email = get_sender_email()
-            resp = requests.post(
-                'https://api.brevo.com/v3/smtp/email',
-                headers={
-                    'api-key': brevo_key,
-                    'Content-Type': 'application/json',
-                },
-                json={
-                    'sender': {'email': sender_email, 'name': 'SpesAttendance'},
-                    'to': [{'email': email}],
-                    'subject': 'SpesAttendance - Account Created',
-                    'textContent': f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
-                },
-                timeout=10,
-            )
-            print(f"Brevo create email status: {resp.status_code} - {resp.text[:200]}")
-    except Exception as e:
-        print(f"Brevo create email error: {e}")
+    send_email(
+        'SpesAttendance - Account Created',
+        f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
+        email,
+    )
 
     result = _serialize_user(user)
     result['temp_password'] = temp_password
@@ -814,33 +819,13 @@ def forgot_password_view(request):
     expires_at = timezone.now() + timedelta(hours=1)
     PasswordResetToken.objects.create(user=user, token=token, expires_at=expires_at)
 
-    # Send reset link email via Brevo HTTP API
+    # Send reset link email via SendGrid
     reset_url = f"https://spes-attendance.web.app/reset-password?token={token}"
-    
-    try:
-        brevo_key = os.getenv('BREVO_API_KEY')
-        if brevo_key:
-            sender_email = get_sender_email()
-            resp = requests.post(
-                'https://api.brevo.com/v3/smtp/email',
-                headers={
-                    'api-key': brevo_key,
-                    'Content-Type': 'application/json',
-                },
-                json={
-                    'sender': {'email': sender_email, 'name': 'SpesAttendance'},
-                    'to': [{'email': email}],
-                    'subject': 'SpesAttendance - Password Reset',
-                    'textContent': f"Hello {user.firstname},\n\nClick the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\n- SpesAttendance Team",
-                },
-                timeout=10,
-            )
-            print(f"Brevo reset email status: {resp.status_code} - {resp.text[:200]}")
-        else:
-            print("BREVO_API_KEY not set")
-    except Exception as e:
-        print(f"Email error: {e}")
-        return Response({'message': 'Failed to send email. Check Render logs.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    send_email(
+        'SpesAttendance - Password Reset',
+        f"Hello {user.firstname},\n\nClick the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\n- SpesAttendance Team",
+        email,
+    )
 
     return Response({'message': 'If the email exists, a reset link will be sent.'})
 

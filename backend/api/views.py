@@ -215,54 +215,55 @@ def verify_captcha(request):
 @permission_classes([AllowAny])
 def verify_challenge(request):
     """Verify CAPTCHA or 2FA from challenge page and set session cookie."""
-    email = request.data.get('email')
-    captcha_token = request.data.get('captcha_token')
-    totp_code = request.data.get('totp_code')
-    redirect = request.data.get('redirect', '/')
-
-    captcha_token = request.data.get('captcha_token')
-
-    # Handle fresh CAPTCHA verification (no email yet - first visit challenge)
-    if not email and captcha_token:
-        captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
-        if not verify_captcha(captcha_token, captcha_secret):
-            return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
-        return Response({'message': 'CAPTCHA verified successfully', 'fresh_verified': True})
-
-    if not email:
-        return Response({'message': 'Email required'}, status=status.HTTP_400_BAD_REQUEST)
-
     try:
-        user = User.objects.get(email=email)
-    except User.DoesNotExist:
-        return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
-
-    # Handle CAPTCHA verification for known user
-    if user.require_captcha:
-        if not captcha_token:
-            return Response({'message': 'CAPTCHA token required'}, status=status.HTTP_400_BAD_REQUEST)
-
-        captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
-        if not verify_captcha(captcha_token, captcha_secret):
-            return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
-
-        user.verify_captcha()
-
-    # Handle 2FA verification
-    if user.two_fa_enabled:
+        email = request.data.get('email')
+        captcha_token = request.data.get('captcha_token')
         totp_code = request.data.get('totp_code')
-        if not totp_code:
-            return Response({'message': '2FA code required'}, status=status.HTTP_400_BAD_REQUEST)
+        redirect = request.data.get('redirect', '/')
 
-        if not verify_totp(user.two_fa_secret, totp_code):
-            return Response({'message': 'Invalid 2FA code'}, status=status.HTTP_400_BAD_REQUEST)
+        # Handle fresh CAPTCHA verification (no email yet - first visit challenge)
+        if not email and captcha_token:
+            captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+            if not verify_captcha(captcha_token, captcha_secret):
+                return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'CAPTCHA verified successfully', 'fresh_verified': True})
 
-    # Challenge verified - redirect back to login
-    return Response({
-        'message': 'Challenge verified successfully',
-        'redirect': redirect,
-        'verified': True,
-    })
+        if not email:
+            return Response({'message': 'Email required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'message': 'User not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Handle CAPTCHA verification for known user
+        if user.require_captcha:
+            if not captcha_token:
+                return Response({'message': 'CAPTCHA token required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            captcha_secret = os.getenv('CAPTCHA_SECRET_KEY', '')
+            if not verify_captcha(captcha_token, captcha_secret):
+                return Response({'message': 'CAPTCHA verification failed'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.verify_captcha()
+
+        # Handle 2FA verification
+        if user.two_fa_enabled:
+            totp_code = request.data.get('totp_code')
+            if not totp_code:
+                return Response({'message': '2FA code required'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not verify_totp(user.two_fa_secret, totp_code):
+                return Response({'message': 'Invalid 2FA code'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Challenge verified - redirect back to login
+        return Response({
+            'message': 'Challenge verified successfully',
+            'redirect': redirect,
+            'verified': True,
+        })
+    except Exception as e:
+        return Response({'message': f'Server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])

@@ -18,7 +18,7 @@ export default function Dashboard() {
   useEffect(() => {
     Promise.all([
       getActiveSession().then(session => {
-        if (session) {
+        if (session && session.clock_in) {
           setClockedIn(true);
           setClockInTime(new Date(session.clock_in));
         }

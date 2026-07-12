@@ -96,11 +96,12 @@ export default function EmployeesPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setShowForm(false)}>
           <div style={{
-            background: 'var(--surface)', borderRadius: 12, padding: 32, width: 480,
+            background: 'var(--surface)', borderRadius: 12, padding: 32,
+            width: 'min(480px, calc(100vw - 32px))', boxSizing: 'border-box',
             maxHeight: '90vh', overflow: 'auto'
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{ margin: '0 0 20px 0' }}>{editId ? 'Edit Employee' : 'Add Employee'}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className={styles.empFormGrid}>
               <div>
                 <label style={{ fontSize: 12, color: 'var(--secondary)', display: 'block', marginBottom: 4 }}>FIRST NAME</label>
                 <input value={form.firstname} onChange={e => setForm({...form, firstname: e.target.value})}

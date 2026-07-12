@@ -60,6 +60,12 @@
   .splitLayout { justify-content: center; }
 }
 
+@media (max-width: 480px) {
+  .loginCard { padding: 2rem 1.5rem; }
+  .header h1 { font-size: 26px; }
+  .rightPanel { padding: 16px; }
+}
+
 .badge {
   display: inline-block;
   background: #1a1a2e;

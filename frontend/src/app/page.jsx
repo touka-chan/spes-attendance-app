@@ -151,8 +151,9 @@ export default function Login() {
           display: 'flex', alignItems: 'center', justifyContent: 'center'
         }} onClick={() => setShowForgot(false)}>
           <div style={{
-            background: 'var(--surface)', borderRadius: 12, padding: 32, width: 400,
-          }} onClick={e => e.stopPropagation()}>
+            background: 'var(--surface)', borderRadius: 12, padding: 32,
+            width: 'min(400px, calc(100vw - 32px))', boxSizing: 'border-box',
+          }} onClick={e => e.stopPropagation()}>            
             <h3 style={{ margin: '0 0 8px 0' }}>Forgot Password</h3>
             <p style={{ fontSize: 14, color: 'var(--secondary)', margin: '0 0 20px 0' }}>
               Enter your email and we'll send a new password.

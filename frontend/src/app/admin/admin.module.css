@@ -4,6 +4,7 @@
   background-color: var(--background);
 }
 
+/* ===== Sidebar ===== */
 .sidebar {
   width: 260px;
   background-color: var(--surface);
@@ -14,6 +15,11 @@
   position: fixed;
   height: 100vh;
   z-index: 50;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebarOverlay {
+  display: none;
 }
 
 .sidebarHeader {
@@ -62,6 +68,7 @@
   font-size: 14px;
   cursor: pointer;
   text-decoration: none;
+  min-height: 44px;
 }
 
 .navItem:hover {
@@ -74,11 +81,13 @@
   border-left: 4px solid var(--primary);
 }
 
+/* ===== Main ===== */
 .main {
   margin-left: 260px;
   flex: 1;
   display: flex;
   flex-direction: column;
+  transition: margin-left 0.3s ease;
 }
 
 .header {
@@ -105,6 +114,7 @@
   max-width: 1440px;
   margin: 0 auto;
   width: 100%;
+  flex: 1;
 }
 
 .overviewHeader {
@@ -112,6 +122,8 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
 }
 
 .overviewHeader h3 {
@@ -128,6 +140,7 @@
 .actions {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .btnSecondary {
@@ -142,6 +155,7 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  min-height: 44px;
 }
 
 .btnPrimary {
@@ -156,8 +170,10 @@
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
+  min-height: 44px;
 }
 
+/* ===== Metrics ===== */
 .metricsGrid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -184,6 +200,7 @@
   border-radius: 8px;
 }
 
+/* ===== Grids ===== */
 .bentoGrid {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
@@ -203,6 +220,7 @@
   gap: 24px;
 }
 
+/* ===== Tables ===== */
 .tableCard {
   background-color: var(--surface);
   border: 1px solid var(--outline-variant);
@@ -216,6 +234,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .tableCardHeader h5 {
@@ -223,10 +243,16 @@
   margin: 0;
 }
 
+.tableContainer {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table {
   width: 100%;
   text-align: left;
   border-collapse: collapse;
+  min-width: 500px;
 }
 
 .table th {
@@ -235,12 +261,14 @@
   color: var(--secondary);
   font-size: 12px;
   text-transform: uppercase;
+  white-space: nowrap;
 }
 
 .table td {
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--outline-variant);
   font-size: 14px;
+  white-space: nowrap;
 }
 
 .badge {
@@ -254,6 +282,7 @@
 .badgeLate { background: #fff0b3; color: #172b4d; }
 .badgeAbsent { background: #ffebe6; color: #bf2600; }
 
+/* ===== Live Feed ===== */
 .liveFeedCard {
   background-color: var(--surface);
   border: 1px solid var(--outline-variant);
@@ -279,6 +308,7 @@
   box-shadow: 0 0 0 1px var(--outline-variant);
 }
 
+/* ===== Promo ===== */
 .promoCard {
   background-color: var(--primary);
   color: white;
@@ -300,121 +330,7 @@
   margin-top: 1rem;
 }
 
-.iconBtn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-.iconBtn:hover {
-  background: var(--background);
-  color: var(--primary);
-}
-
-.iconBtn:active {
-  transform: scale(0.92);
-}
-
-.iconBtn .material-symbols-outlined {
-  font-size: 24px;
-  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
-}
-
-.iconBtn:hover .material-symbols-outlined {
-  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
-}
-
-.notifBadge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 8px;
-  height: 8px;
-  background: var(--error);
-  border-radius: 50%;
-  border: 2px solid var(--surface);
-}
-
-.notifDropdown {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: -8px;
-  background: white;
-  border: 1px solid var(--outline-variant);
-  border-radius: 12px;
-  min-width: 320px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
-  z-index: 60;
-  overflow: hidden;
-}
-
-.notifHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--outline-variant);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--on-surface);
-}
-
-.notifCount {
-  background: var(--primary);
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-}
-
-.notifItem {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 12px 20px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.notifItem:hover {
-  background: var(--background);
-}
-
-.notifItem:not(:last-child) {
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.notifDot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  margin-top: 6px;
-  flex-shrink: 0;
-}
-
-.notifText {
-  margin: 0;
-  font-size: 13px;
-  color: var(--on-surface);
-  line-height: 1.4;
-}
-
-.notifTime {
-  margin: 2px 0 0 0;
-  font-size: 11px;
-  color: var(--secondary);
-}
-
+/* ===== Schedule ===== */
 .scheduleCard {
   background: var(--surface);
   border: 1px solid var(--outline-variant);
@@ -428,6 +344,8 @@
   align-items: center;
   justify-content: space-between;
   margin-bottom: 4px;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .scheduleHeader h5 {
@@ -499,6 +417,146 @@
   background: var(--surface);
 }
 
+/* ===== Hamburger ===== */
+.hamburger {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--on-surface);
+  padding: 8px;
+  border-radius: 8px;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+}
+
+.hamburger:hover {
+  background: var(--background);
+}
+
+.hamburger .material-symbols-outlined {
+  font-size: 28px;
+}
+
+/* ===== Icons ===== */
+.iconBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.iconBtn:hover {
+  background: var(--background);
+  color: var(--primary);
+}
+
+.iconBtn:active {
+  transform: scale(0.92);
+}
+
+.iconBtn .material-symbols-outlined {
+  font-size: 24px;
+  font-variation-settings: 'FILL' 0, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+
+.iconBtn:hover .material-symbols-outlined {
+  font-variation-settings: 'FILL' 1, 'wght' 500, 'GRAD' 0, 'opsz' 24;
+}
+
+.notifBadge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  background: var(--error);
+  border-radius: 50%;
+  border: 2px solid var(--surface);
+}
+
+.notifDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -8px;
+  background: white;
+  border: 1px solid var(--outline-variant);
+  border-radius: 12px;
+  min-width: 320px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+  z-index: 60;
+  overflow: hidden;
+}
+
+.notifHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--outline-variant);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--on-surface);
+}
+
+.notifCount {
+  background: var(--primary);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+}
+
+.notifItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 20px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.notifItem:hover {
+  background: var(--background);
+}
+
+.notifItem:not(:last-child) {
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.notifDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: 6px;
+  flex-shrink: 0;
+}
+
+.notifText {
+  margin: 0;
+  font-size: 13px;
+  color: var(--on-surface);
+  line-height: 1.4;
+}
+
+.notifTime {
+  margin: 2px 0 0 0;
+  font-size: 11px;
+  color: var(--secondary);
+}
+
 .initialsAvatar {
   width: 40px;
   height: 40px;
@@ -512,4 +570,133 @@
   font-size: 14px;
   flex-shrink: 0;
   letter-spacing: 1px;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%);
+  }
+
+  .sidebarOpen {
+    transform: translateX(0);
+  }
+
+  .sidebarOverlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 49;
+    animation: fadeIn 0.2s ease;
+  }
+
+  .hamburger {
+    display: flex;
+  }
+
+  .main {
+    margin-left: 0;
+  }
+
+  .header {
+    padding: 0 1rem;
+  }
+
+  .content {
+    padding: 1rem;
+  }
+
+  .overviewHeader h3 {
+    font-size: 24px;
+  }
+
+  .metricsGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+
+  .bentoGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .col8,
+  .col4 {
+    grid-column: span 1;
+  }
+
+  .scheduleCard {
+    padding: 16px;
+  }
+
+  .timeInput {
+    width: 120px;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.75rem 1rem;
+  }
+
+  .notifDropdown {
+    right: 0;
+    min-width: 280px;
+  }
+}
+
+@media (max-width: 480px) {
+  .metricsGrid {
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .metricCard {
+    padding: 1rem;
+  }
+
+  .overviewHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .actions {
+    width: 100%;
+  }
+
+  .actions .btnSecondary,
+  .actions .btnPrimary {
+    flex: 1;
+    justify-content: center;
+  }
+}
+
+.empFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 480px) {
+  .empFormGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.scheduleRow {
+  display: flex;
+  gap: 32px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 768px) {
+  .scheduleRow {
+    flex-direction: column;
+    gap: 20px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }

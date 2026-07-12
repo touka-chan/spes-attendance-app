@@ -21,6 +21,18 @@
   animation: fadeInUp 0.4s ease;
 }
 
+@media (max-width: 480px) {
+  .container { padding: 1rem; }
+  .card { padding: 2rem 1.5rem; }
+  .header h1 { font-size: 1.4rem; }
+  .header p { font-size: 0.9rem; }
+  .challengeBox { 
+    padding: 1rem;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;

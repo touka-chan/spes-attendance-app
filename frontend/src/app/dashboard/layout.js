@@ -30,6 +30,7 @@ export default function DashboardLayout({ children }) {
   const [notifications, setNotifications] = useState([]);
   const [sessionExpired, setSessionExpired] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const prevUnreadRef = { current: 0 };
 
   useEffect(() => {
@@ -160,9 +161,16 @@ export default function DashboardLayout({ children }) {
     { href: '/dashboard/reports', label: 'Reports', icon: 'assessment' },
   ];
 
+  const closeSidebar = () => setSidebarOpen(false);
+
   return (
     <div className={styles.layout}>
-      <aside className={styles.sidebar}>
+      <div
+        className={styles.sidebarOverlay}
+        onClick={closeSidebar}
+        style={sidebarOpen ? { display: 'block' } : {}}
+      />
+      <aside className={`${styles.sidebar} ${sidebarOpen ? styles.sidebarOpen : ''}`}>
         <div className={styles.sidebarHeader}>
           <div className={styles.logoRow}>
             <Image src="/speslogo.png" alt="SPES Logo" width={36} height={36} className={styles.sidebarLogo} />
@@ -178,6 +186,7 @@ export default function DashboardLayout({ children }) {
               key={item.href}
               href={item.href}
               className={`${styles.navItem} ${pathname === item.href ? styles.navItemActive : ''}`}
+              onClick={closeSidebar}
             >
               <span className="material-symbols-outlined">{item.icon}</span>
               {item.label}
@@ -194,9 +203,14 @@ export default function DashboardLayout({ children }) {
 
       <main className={styles.main}>
         <header className={styles.header}>
-          <div>
-            <h2>Welcome back, {userName}</h2>
-            <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button onClick={() => setSidebarOpen(true)} className={`${styles.iconBtn} ${styles.hamburger}`}>
+              <span className="material-symbols-outlined">menu</span>
+            </button>
+            <div>
+              <h2>Welcome back, {userName}</h2>
+              <p>{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+            </div>
           </div>
           <div className={styles.actions}>
             <div style={{ position: 'relative' }}>

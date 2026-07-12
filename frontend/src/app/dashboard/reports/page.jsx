@@ -22,27 +22,6 @@ const PIE_COLORS = ['#00b894', '#e17055'];
 const BAR_COLOR = '#0984e3';
 const LINE_COLOR = '#6c5ce7';
 
-const CustomTooltip = ({ active, payload, label }) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{
-      background: 'white',
-      border: '1px solid var(--outline-variant)',
-      borderRadius: '8px',
-      padding: '12px 16px',
-      boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
-      fontSize: 13,
-    }}>
-      <p style={{ margin: 0, fontWeight: 600, color: 'var(--on-surface)' }}>{label}</p>
-      {payload.map((entry, i) => (
-        <p key={i} style={{ margin: '4px 0 0', color: entry.color }}>
-          {entry.name}: <strong>{entry.value}</strong>
-        </p>
-      ))}
-    </div>
-  );
-};
-
 export default function ReportsPage() {
   const [data, setData] = useState(null);
 

@@ -95,7 +95,7 @@ export default function AdminPanel() {
         <p style={{ fontSize: 13, color: 'var(--secondary)', margin: '0 0 20px 0' }}>
           Control clock-in and clock-out independently. Set time windows and enable/disable each.
         </p>
-        <div style={{ display: 'flex', gap: 32, marginBottom: 24 }}>
+        <div className={styles.scheduleRow}>
           <div>
             <label style={{ fontSize: 12, color: 'var(--secondary)', display: 'block', marginBottom: 6 }}>CLOCK IN WINDOW</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>

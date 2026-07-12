@@ -239,6 +239,37 @@ input:focus {
   display: inline-flex !important;
 }
 
+/* Mobile responsive Swal */
+@media (max-width: 576px) {
+  .swal-themed-popup,
+  .themed-swal-popup {
+    width: calc(100vw - 24px) !important;
+    min-height: auto !important;
+    max-height: 90vh !important;
+    padding: 16px 20px !important;
+    margin: 12px !important;
+  }
+  .swal-themed-title {
+    font-size: 0.95rem !important;
+  }
+  .swal-themed-html {
+    font-size: 0.8rem !important;
+    max-height: 140px !important;
+  }
+  .swal2-icon.swal-themed-icon {
+    width: 36px !important;
+    height: 36px !important;
+    margin: 0 auto 6px !important;
+  }
+  .swal-themed-icon {
+    font-size: 1.4rem !important;
+  }
+  .swal2-toast.swal-themed-popup {
+    max-width: calc(100vw - 24px) !important;
+    margin: 8px !important;
+  }
+}
+
 /* ===== Skeleton Loading ===== */
 @keyframes shimmer {
   0% { background-position: -200% 0; }

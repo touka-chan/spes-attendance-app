@@ -16,6 +16,7 @@ export default function ChallengePageContent() {
   const [widgetId, setWidgetId] = useState(null);
   const [turnstileReady, setTurnstileReady] = useState(false);
   const [widgetTimeout, setWidgetTimeout] = useState(false);
+  const [verified, setVerified] = useState(false);
 
   useEffect(() => {
     setSiteKey(searchParams.get('site_key') || FALLBACK_SITE_KEY);
@@ -77,7 +78,8 @@ export default function ChallengePageContent() {
 
       if (res.ok && (data.fresh_verified || data.message === 'CAPTCHA verified successfully')) {
         sessionStorage.setItem('captcha_verified', 'true');
-        window.location.href = redirectUrl;
+        setVerified(true);
+        setTimeout(() => { window.location.href = redirectUrl; }, 3000);
       } else {
         throw new Error(data.message || 'Verification failed');
       }
@@ -109,6 +111,19 @@ export default function ChallengePageContent() {
           {error}
         </div>}
 
+        {verified ? (
+          <div className={styles.challengeBox}>
+            <div className={styles.checkmarkContainer}>
+              <div className={styles.checkmarkCircle}>
+                <svg viewBox="0 0 24 24">
+                  <polyline points="4,12 10,18 20,6" />
+                </svg>
+              </div>
+              <div className={styles.successText}>Verified!</div>
+              <div className={styles.redirectText}>Redirecting to login...</div>
+            </div>
+          </div>
+        ) : (
         <div className={styles.challengeBox}>
           <div style={{ textAlign: 'center', marginBottom: '16px' }}>
             <span className="material-symbols-outlined" style={{ fontSize: '48px', color: 'var(--primary)' }}>shield</span>
@@ -141,6 +156,7 @@ export default function ChallengePageContent() {
             {widgetId ? 'Complete the CAPTCHA above to continue' : ' '}
           </div>
         </div>
+        )}
 
         <div className={styles.footer}>
           <a href="/" onClick={(e) => { e.preventDefault(); window.location.href = '/'; }}>

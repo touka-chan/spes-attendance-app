@@ -47,7 +47,7 @@ export default function AdminPanel() {
           <p>System status</p>
         </div>
         <div className={styles.actions}>
-          <button className={styles.btnPrimary}>
+          <button className={styles.btnPrimary} onClick={() => window.location.href = '/admin/reports'}>
             <span className="material-symbols-outlined">file_download</span>
             Generate Report
           </button>

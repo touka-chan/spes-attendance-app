@@ -18,6 +18,19 @@ import {
 import styles from '../admin.module.css';
 import { getAdminAnalytics } from '../../lib/api';
 
+function downloadCSV(data) {
+  if (!data) return;
+  const rows = data.daily_attendance.map(d => `${d.date},${d.count}`);
+  const csv = 'Date,Present Count\n' + rows.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `analytics_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 const PIE_COLORS = ['#00b894', '#e17055', '#b2bec3'];
 const BAR_COLOR = '#0984e3';
 const LINE_COLOR = '#6c5ce7';
@@ -79,6 +92,12 @@ export default function ReportsPage() {
         <div>
           <h3>Reports</h3>
           <p>Real-time attendance analytics</p>
+        </div>
+        <div className={styles.actions}>
+          <button className={styles.btnSecondary} onClick={() => downloadCSV(data)} disabled={!data}>
+            <span className="material-symbols-outlined">file_download</span>
+            Export CSV
+          </button>
         </div>
       </div>
 

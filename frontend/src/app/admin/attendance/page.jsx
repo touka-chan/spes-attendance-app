@@ -3,6 +3,28 @@ import { useState, useEffect } from 'react';
 import styles from '../admin.module.css';
 import { request } from '../../lib/api';
 
+function downloadCSV(records) {
+  const headers = ['Employee', 'ID No.', 'Date', 'Clock In', 'Clock Out', 'Status', 'Total Hours'];
+  const rows = records.map(item => [
+    item.user_name,
+    item.user_id_no,
+    new Date(item.clock_in).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+    new Date(item.clock_in).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    item.clock_out ? new Date(item.clock_out).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '--',
+    item.clock_out ? 'Completed' : 'Clocked In',
+    item.duration || '--',
+  ].map(v => `"${v}"`).join(','));
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `attendance_${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AttendancePage() {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +41,7 @@ export default function AttendancePage() {
           <p>Monitor daily attendance records</p>
         </div>
         <div className={styles.actions}>
-          <button className={styles.btnSecondary}>
+          <button className={styles.btnSecondary} onClick={() => downloadCSV(records)} disabled={records.length === 0}>
             <span className="material-symbols-outlined">file_download</span>
             Export
           </button>

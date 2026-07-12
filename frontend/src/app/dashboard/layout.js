@@ -5,6 +5,7 @@ import styles from './dashboard.module.css';
 import Link from 'next/link';
 import Image from 'next/image';
 import Swal from 'sweetalert2';
+import { getNotifications, markRead, markAllRead, timeAgo } from '../lib/notifications';
 
 const THEMED_SWAL = {
   background: 'var(--surface)',
@@ -26,7 +27,10 @@ export default function DashboardLayout({ children }) {
   const [authed, setAuthed] = useState(false);
   const [userName, setUserName] = useState('Alex');
   const [showNotif, setShowNotif] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const prevUnreadRef = { current: 0 };
 
   useEffect(() => {
     const checkAuth = () => {
@@ -41,8 +45,6 @@ export default function DashboardLayout({ children }) {
           window.location.href = '/';
           return;
         }
-        
-        // Check session expiry (30 min for user)
         if (user.expiresAt) {
           const expiresAt = new Date(user.expiresAt).getTime();
           const now = Date.now();
@@ -51,7 +53,6 @@ export default function DashboardLayout({ children }) {
             return;
           }
         }
-        
         setAuthed(true);
         setUserName((user.name || 'Alex').split(' ')[0]);
       } catch {
@@ -59,9 +60,36 @@ export default function DashboardLayout({ children }) {
       }
     };
 
+    const fetchNotifs = () => {
+      getNotifications().then(data => {
+        if (data) {
+          setNotifications(data);
+          const count = data.filter(n => !n.is_read).length;
+          setUnreadCount(count);
+          if (count > prevUnreadRef.current && document.hidden) {
+            try {
+              const notif = new Notification('SpesAttendance', {
+                body: data.find(n => !n.is_read)?.title || 'New notification',
+                icon: '/speslogo.png',
+              });
+              setTimeout(() => notif.close(), 5000);
+            } catch {}
+          }
+          prevUnreadRef.current = count;
+        }
+      }).catch(() => {});
+    };
+
     checkAuth();
-    const interval = setInterval(checkAuth, 30000);
-    return () => clearInterval(interval);
+    fetchNotifs();
+    const authInterval = setInterval(checkAuth, 30000);
+    const notifInterval = setInterval(fetchNotifs, 30000);
+
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    return () => { clearInterval(authInterval); clearInterval(notifInterval); };
   }, []);
 
   const showSessionExpired = () => {
@@ -77,6 +105,20 @@ export default function DashboardLayout({ children }) {
       localStorage.removeItem('attendanceClock');
       window.location.href = '/';
     });
+  };
+
+  const handleMarkAllRead = async () => {
+    await markAllRead();
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    setUnreadCount(0);
+  };
+
+  const handleNotifClick = async (n) => {
+    if (!n.is_read) {
+      await markRead(n.id);
+      setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, is_read: true } : x));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    }
   };
 
   if (sessionExpired) {
@@ -109,6 +151,8 @@ export default function DashboardLayout({ children }) {
   };
 
   if (!authed) return null;
+
+  const notifColors = { clock_in: 'var(--success)', clock_out: 'var(--primary)', settings: 'var(--error)', info: 'var(--primary)', warning: '#f39c12' };
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: 'dashboard' },
@@ -158,35 +202,25 @@ export default function DashboardLayout({ children }) {
             <div style={{ position: 'relative' }}>
               <button onClick={() => setShowNotif(!showNotif)} className={styles.iconBtn}>
                 <span className="material-symbols-outlined">notifications</span>
-                <span className={styles.notifBadge}></span>
+                {unreadCount > 0 && <span className={styles.notifBadge}>{unreadCount > 9 ? '9+' : unreadCount}</span>}
               </button>
               {showNotif && (
                 <div className={styles.notifDropdown}>
                   <div className={styles.notifHeader}>
                     <span>Notifications</span>
-                    <span className={styles.notifCount}>3</span>
+                    {unreadCount > 0 && <a onClick={handleMarkAllRead} style={{ fontSize: 12, cursor: 'pointer', color: 'var(--primary)' }}>Mark all read</a>}
                   </div>
-                  <div className={styles.notifItem}>
-                    <div className={styles.notifDot} style={{ background: 'var(--success)' }}></div>
-                    <div>
-                      <p className={styles.notifText}><strong>Sarah Miller</strong> clocked in</p>
-                      <p className={styles.notifTime}>Just now</p>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--secondary)', fontSize: 13 }}>No notifications yet.</div>
+                  ) : notifications.slice(0, 20).map(n => (
+                    <div key={n.id} className={styles.notifItem} onClick={() => handleNotifClick(n)} style={{ cursor: 'pointer', opacity: n.is_read ? 0.6 : 1, background: n.is_read ? 'transparent' : 'rgba(0,82,204,0.04)' }}>
+                      <div className={styles.notifDot} style={{ background: notifColors[n.type] || 'var(--primary)' }}></div>
+                      <div>
+                        <p className={styles.notifText}>{n.title}</p>
+                        <p className={styles.notifTime}>{timeAgo(n.created_at)}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className={styles.notifItem}>
-                    <div className={styles.notifDot} style={{ background: 'var(--primary)' }}></div>
-                    <div>
-                      <p className={styles.notifText}><strong>Robert Vance</strong> clocked out</p>
-                      <p className={styles.notifTime}>2m ago</p>
-                    </div>
-                  </div>
-                  <div className={styles.notifItem}>
-                    <div className={styles.notifDot} style={{ background: 'var(--error)' }}></div>
-                    <div>
-                      <p className={styles.notifText}>Leave request from <strong>Anna Lee</strong></p>
-                      <p className={styles.notifTime}>1h ago</p>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               )}
             </div>

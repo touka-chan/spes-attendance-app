@@ -132,13 +132,38 @@ export default function Dashboard() {
         {loading ? <SkeletonCard /> : (
         <div className={`${styles.card} ${styles.clockCard}`}>
           <span className="material-symbols-outlined" style={{ position: 'absolute', bottom: -10, right: -10, opacity: 0.08, fontSize: 100, transform: 'rotate(-15deg)' }}>schedule</span>
-          <div className={styles.timer}>{formatTime(clockInTime)}</div>
-          <p style={{ fontSize: 12, color: 'var(--secondary)' }}>CLOCK IN TIME</p>
-          <p style={{ fontSize: 11, color: 'var(--secondary)', margin: '4px 0 12px 0' }}>{formatDate(clockInTime)}</p>
+          {clockedIn ? (
+            <>
+              <div className={styles.timer}>{formatTime(clockInTime)}</div>
+              <p style={{ fontSize: 12, color: 'var(--secondary)' }}>CLOCK IN TIME</p>
+              <p style={{ fontSize: 11, color: 'var(--secondary)', margin: '4px 0 12px 0' }}>{formatDate(clockInTime)}</p>
+            </>
+          ) : clockOutTime ? (
+            <>
+              <span className="material-symbols-outlined" style={{ fontSize: 40, color: 'var(--secondary)', marginBottom: 8 }}>log out</span>
+              <p style={{ fontSize: 12, color: 'var(--secondary)', margin: 0 }}>CLOCKED OUT AT</p>
+              <div className={styles.timer} style={{ fontSize: 20, marginTop: 4 }}>{formatTime(clockOutTime)}</div>
+              <p style={{ fontSize: 11, color: 'var(--secondary)', margin: '4px 0 12px 0' }}>{formatDate(clockOutTime)}</p>
+            </>
+          ) : (
+            <>
+              <span className="material-symbols-outlined" style={{ fontSize: 40, color: 'var(--primary)', marginBottom: 8 }}>login</span>
+              <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--primary)', margin: 0 }}>Ready to Clock In</p>
+              {settings && settings.clock_in_enabled ? (
+                <p style={{ fontSize: 11, color: 'var(--primary)', margin: '4px 0 12px 0', opacity: 0.7 }}>
+                  Clock-in window: {settings.clock_in_start} - {settings.clock_in_end}
+                </p>
+              ) : settings && (
+                <p style={{ fontSize: 11, color: 'var(--secondary)', margin: '4px 0 12px 0', fontStyle: 'italic' }}>
+                  Clock-in is currently disabled by admin.
+                </p>
+              )}
+            </>
+          )}
           {error && <p style={{ fontSize: 11, color: 'var(--error)', margin: '0 0 8px 0' }}>{error}</p>}
           {!clockedIn && settings && !settings.clock_in_enabled && (
             <p style={{ fontSize: 11, color: 'var(--secondary)', margin: '0 0 8px 0', fontStyle: 'italic' }}>
-              Clock-in is disabled. Allowed window: {settings.clock_in_start} - {settings.clock_in_end}.
+              Allowed window: {settings.clock_in_start} - {settings.clock_in_end}.
             </p>
           )}
           {clockedIn && settings && !settings.clock_out_enabled && (

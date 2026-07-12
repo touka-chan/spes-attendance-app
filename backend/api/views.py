@@ -13,7 +13,8 @@ from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
 from django.conf import settings
-from .models import User, Attendance, AttendanceSettings, PasswordResetToken
+from django.db import models
+from .models import User, Attendance, AttendanceSettings, PasswordResetToken, Notification
 
 
 def verify_turnstile(token, secret_key):
@@ -30,6 +31,18 @@ def verify_turnstile(token, secret_key):
         return result.get('success', False)
     except Exception:
         return False
+
+
+def create_notification(notif_type, title, message, recipient_role='all', recipient=None, related_user=None):
+    """Create a notification for users."""
+    Notification.objects.create(
+        recipient_role=recipient_role,
+        recipient=recipient,
+        notif_type=notif_type,
+        title=title,
+        message=message,
+        related_user=related_user,
+    )
 
 
 def verify_totp(secret, code):
@@ -443,6 +456,9 @@ def clock_in(request):
         is_late=t > grace_end,
     )
 
+    name = request.user.get_full_name
+    create_notification('clock_in', f'{name} clocked in', f'{name} clocked in at {now.strftime("%I:%M %p")}', recipient_role='admin', related_user=request.user)
+
     return Response({
         'message': 'Clocked in successfully',
         'attendance': _serialize_attendance(att),
@@ -473,6 +489,10 @@ def clock_out(request):
 
     att.clock_out = now
     att.save()
+
+    name = request.user.get_full_name
+    duration = att.duration
+    create_notification('clock_out', f'{name} clocked out', f'{name} clocked out at {now.strftime("%I:%M %p")}. Duration: {duration}', recipient_role='admin', related_user=request.user)
 
     return Response({
         'message': 'Clocked out successfully',
@@ -559,6 +579,15 @@ def settings_view(request):
             setattr(s, key, bool(val))
     s.updated_by = request.user
     s.save()
+
+    old_in = request.data.get('clock_in_enabled')
+    old_out = request.data.get('clock_out_enabled')
+    if old_in is not None:
+        enabled = s.clock_in_enabled
+        create_notification('settings', f'Clock-in {"enabled" if enabled else "disabled"}', f'Admin {"enabled" if enabled else "disabled"} clock-in. Window: {_time_str(s.clock_in_start)} - {_time_str(s.clock_in_end)}', recipient_role='user')
+    if old_out is not None:
+        enabled = s.clock_out_enabled
+        create_notification('settings', f'Clock-out {"enabled" if enabled else "disabled"}', f'Admin {"enabled" if enabled else "disabled"} clock-out. Window: {_time_str(s.clock_out_start)} - {_time_str(s.clock_out_end)}', recipient_role='user')
 
     return Response({
         'message': 'Settings updated',
@@ -835,4 +864,64 @@ def reset_password_view(request):
     reset_token.save()
 
     return Response({'message': 'Password reset successful. You can now login.'})
+
+
+# ===== Notifications =====
+
+@api_view(['GET'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([AllowAny])
+def notifications_view(request):
+    if not request.user.is_authenticated:
+        return Response({'message': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    notifs = Notification.objects.filter(
+        models.Q(recipient=request.user) |
+        models.Q(recipient_role=request.user.role) |
+        models.Q(recipient_role='all'),
+        recipient__isnull=False,
+    ).distinct()[:50]
+
+    return Response([{
+        'id': n.id,
+        'type': n.notif_type,
+        'title': n.title,
+        'message': n.message,
+        'is_read': n.is_read,
+        'created_at': n.created_at.isoformat(),
+        'related_user': n.related_user.get_full_name if n.related_user else None,
+    } for n in notifs])
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([AllowAny])
+def mark_notification_read(request, notif_id):
+    if not request.user.is_authenticated:
+        return Response({'message': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    try:
+        notif = Notification.objects.get(id=notif_id)
+        notif.is_read = True
+        notif.save()
+        return Response({'message': 'Marked as read'})
+    except Notification.DoesNotExist:
+        return Response({'message': 'Notification not found'}, status=status.HTTP_404_NOT_FOUND)
+
+
+@api_view(['POST'])
+@authentication_classes([TokenAuthentication])
+@permission_classes([AllowAny])
+def mark_all_notifications_read(request):
+    if not request.user.is_authenticated:
+        return Response({'message': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+    Notification.objects.filter(
+        models.Q(recipient=request.user) |
+        models.Q(recipient_role=request.user.role) |
+        models.Q(recipient_role='all'),
+        is_read=False,
+    ).update(is_read=True)
+
+    return Response({'message': 'All marked as read'})
 

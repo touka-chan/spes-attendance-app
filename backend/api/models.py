@@ -168,3 +168,29 @@ class PasswordResetToken(models.Model):
     def is_valid(self):
         from django.utils import timezone
         return not self.used and self.expires_at > timezone.now()
+
+
+class Notification(models.Model):
+    NOTIF_TYPES = [
+        ('clock_in', 'Clock In'),
+        ('clock_out', 'Clock Out'),
+        ('settings', 'Settings Change'),
+        ('info', 'Info'),
+        ('warning', 'Warning'),
+    ]
+
+    recipient_role = models.CharField(max_length=10, choices=[('user', 'User'), ('admin', 'Admin'), ('all', 'All')], default='all')
+    recipient = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+    notif_type = models.CharField(max_length=20, choices=NOTIF_TYPES, default='info')
+    title = models.CharField(max_length=255)
+    message = models.TextField()
+    related_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='triggered_notifications')
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'notifications'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"[{self.notif_type}] {self.title}"

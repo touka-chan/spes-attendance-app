@@ -25,4 +25,7 @@ urlpatterns = [
     path('admin/settings/', views.settings_view, name='settings'),
     path('admin/employees/', views.employees_view, name='employees'),
     path('admin/employees/<int:user_id>/', views.employee_detail_view, name='employee-detail'),
+    path('notifications/', views.notifications_view, name='notifications'),
+    path('notifications/<int:notif_id>/read/', views.mark_notification_read, name='mark-notification-read'),
+    path('notifications/read-all/', views.mark_all_notifications_read, name='mark-all-notifications-read'),
 ]

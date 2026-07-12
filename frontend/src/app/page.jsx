@@ -32,17 +32,6 @@ export default function Login() {
       window.history.replaceState({}, '', window.location.pathname);
     }
 
-    // On first visit, show challenge page with CAPTCHA
-    const verified = sessionStorage.getItem('captcha_verified');
-    if (!verified && !twoFaVerified) {
-      const params = new URLSearchParams({
-        type: 'captcha',
-        fresh: '1',
-        redirect: '/'
-      });
-      window.location.href = `/challenge?${params.toString()}`;
-      return;
-    }
     checkRequirements();
   }, []);
 

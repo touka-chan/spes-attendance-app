@@ -100,7 +100,7 @@ export default function ChallengePageContent() {
     setError('');
 
     try {
-      const res = await fetch('https://spes-attendance-app.onrender.com/api/verify-challenge/', {
+      const res = await fetch('https://spes-attendance-app.onrender.com/api/login/verify-challenge/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from 'react';
 import styles from './admin.module.css';
-import { getSettings, updateSettings } from '../lib/api';
+import { getSettings, updateSettings, getAdminAnalytics } from '../lib/api';
 import { showToast } from '../lib/alerts';
 
 export default function AdminPanel() {
@@ -13,6 +13,7 @@ export default function AdminPanel() {
   const [clockInEnabled, setClockInEnabled] = useState(false);
   const [clockOutEnabled, setClockOutEnabled] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [analytics, setAnalytics] = useState(null);
 
   useEffect(() => {
     getSettings().then(res => {
@@ -24,6 +25,7 @@ export default function AdminPanel() {
       setClockInEnabled(res.clock_in_enabled);
       setClockOutEnabled(res.clock_out_enabled);
     }).catch(() => {});
+    getAdminAnalytics().then(setAnalytics).catch(() => {});
   }, []);
 
   const handleSave = async () => {
@@ -60,7 +62,7 @@ export default function AdminPanel() {
             </div>
           </div>
           <p style={{ fontSize: 12, color: 'var(--secondary)', textTransform: 'uppercase' }}>Total Employees</p>
-          <h4 style={{ fontSize: 32, margin: 0 }}>--</h4>
+          <h4 style={{ fontSize: 32, margin: 0 }}>{analytics ? analytics.total_employees : '--'}</h4>
         </div>
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>
@@ -69,7 +71,7 @@ export default function AdminPanel() {
             </div>
           </div>
           <p style={{ fontSize: 12, color: 'var(--secondary)', textTransform: 'uppercase' }}>Present Today</p>
-          <h4 style={{ fontSize: 32, margin: 0 }}>--</h4>
+          <h4 style={{ fontSize: 32, margin: 0 }}>{analytics ? analytics.present_today : '--'}</h4>
         </div>
         <div className={styles.metricCard}>
           <div className={styles.metricHeader}>
@@ -78,7 +80,7 @@ export default function AdminPanel() {
             </div>
           </div>
           <p style={{ fontSize: 12, color: 'var(--secondary)', textTransform: 'uppercase' }}>Late Arrivals</p>
-          <h4 style={{ fontSize: 32, margin: 0 }}>--</h4>
+          <h4 style={{ fontSize: 32, margin: 0 }}>{analytics ? analytics.late_today : '--'}</h4>
         </div>
       </div>
 

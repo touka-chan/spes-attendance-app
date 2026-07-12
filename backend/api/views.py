@@ -12,6 +12,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.authtoken.models import Token
+from django.conf import settings
 from .models import User, Attendance, AttendanceSettings, PasswordResetToken
 
 
@@ -617,7 +618,7 @@ def employees_view(request):
                     'Content-Type': 'application/json',
                 },
                 json={
-                    'sender': {'email': os.getenv('DEFAULT_FROM_EMAIL'), 'name': 'SpesAttendance'},
+                    'sender': {'email': settings.DEFAULT_FROM_EMAIL or 'noreply@spes-attendance.com', 'name': 'SpesAttendance'},
                     'to': [{'email': email}],
                     'subject': 'SpesAttendance - Account Created',
                     'textContent': f'Hello {firstname},\n\nYour account has been created.\n\nEmail: {email}\nID No.: {id_no}\nTemporary Password: {temp_password}\n\nPlease change your password after logging in.\n\n- SpesAttendance Team',
@@ -780,7 +781,7 @@ def forgot_password_view(request):
                     'Content-Type': 'application/json',
                 },
                 json={
-                    'sender': {'email': os.getenv('DEFAULT_FROM_EMAIL'), 'name': 'SpesAttendance'},
+                    'sender': {'email': settings.DEFAULT_FROM_EMAIL or 'noreply@spes-attendance.com', 'name': 'SpesAttendance'},
                     'to': [{'email': email}],
                     'subject': 'SpesAttendance - Password Reset',
                     'textContent': f"Hello {user.firstname},\n\nClick the link below to reset your password:\n\n{reset_url}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email.\n\n- SpesAttendance Team",
